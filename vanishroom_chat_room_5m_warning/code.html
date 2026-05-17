@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>VanishRoom - Chat Room (5 Min Warning)</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-variant": "#44302a",
+                      "primary": "#ffb5a0",
+                      "secondary-fixed": "#ffdcc3",
+                      "ash-500": "#666666",
+                      "surface-container-low": "#291712",
+                      "surface-container-highest": "#44302a",
+                      "inverse-on-surface": "#402c26",
+                      "outline-variant": "#5d4038",
+                      "on-surface": "#fddbd3",
+                      "tertiary-fixed-dim": "#a5c8ff",
+                      "surface-container-lowest": "#190a06",
+                      "surface": "#1f0f0b",
+                      "tertiary": "#a5c8ff",
+                      "on-tertiary-container": "#002a53",
+                      "on-primary": "#601400",
+                      "on-secondary-fixed": "#2f1500",
+                      "error": "#FF3B30",
+                      "on-error": "#690005",
+                      "ash-400": "#808080",
+                      "inverse-surface": "#fddbd3",
+                      "on-background": "#fddbd3",
+                      "primary-fixed": "#ffdbd1",
+                      "primary-container": "#ff5625",
+                      "error-container": "#93000a",
+                      "on-surface-variant": "#e7bdb2",
+                      "secondary": "#ffb77d",
+                      "surface-container": "#2d1b16",
+                      "pure-black": "#000000",
+                      "on-primary-fixed": "#3b0900",
+                      "ash-200": "#E1E1E1",
+                      "surface-dim": "#1f0f0b",
+                      "outline": "#ad887e",
+                      "tertiary-container": "#2592ff",
+                      "on-secondary-fixed-variant": "#6e3900",
+                      "primary-fixed-dim": "#ffb5a0",
+                      "on-primary-container": "#541100",
+                      "secondary-fixed-dim": "#ffb77d",
+                      "success": "#34C759",
+                      "surface-tint": "#ffb5a0",
+                      "on-tertiary": "#00315e",
+                      "on-error-container": "#ffdad6",
+                      "on-primary-fixed-variant": "#872000",
+                      "surface-container-high": "#392520",
+                      "tertiary-fixed": "#d4e3ff",
+                      "inverse-primary": "#b12d00",
+                      "on-secondary-container": "#603100",
+                      "background": "#1f0f0b",
+                      "ash-900": "#0A0A0A",
+                      "ash-600": "#4D4D4D",
+                      "on-secondary": "#4d2600",
+                      "on-tertiary-fixed-variant": "#004785",
+                      "fire-500": "#FF4500",
+                      "ash-800": "#1A1A1A",
+                      "fire-600": "#CC3700",
+                      "ash-300": "#B0B0B0",
+                      "on-tertiary-fixed": "#001c3a",
+                      "ash-700": "#2A2A2A",
+                      "secondary-container": "#fd8b00",
+                      "surface-bright": "#49342f"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.25rem",
+                      "lg": "0.5rem",
+                      "xl": "0.75rem",
+                      "full": "9999px"
+              },
+              "spacing": {
+                      "input-bar-height": "60px",
+                      "header-height": "56px",
+                      "gutter-sm": "16px",
+                      "gutter-md": "20px",
+                      "container-max-desktop": "420px",
+                      "container-max-mobile": "360px"
+              },
+              "fontFamily": {
+                      "body-lg": ["Plus Jakarta Sans"],
+                      "body-sm": ["Plus Jakarta Sans"],
+                      "body-md": ["Plus Jakarta Sans"],
+                      "display-lg": ["Plus Jakarta Sans"],
+                      "room-code": ["Plus Jakarta Sans"],
+                      "label-caps": ["Plus Jakarta Sans"],
+                      "h1": ["Plus Jakarta Sans"],
+                      "display-lg-mobile": ["Plus Jakarta Sans"],
+                      "label-timer": ["Plus Jakarta Sans"]
+              },
+              "fontSize": {
+                      "body-lg": ["19px", {"lineHeight": "1.6", "fontWeight": "400"}],
+                      "body-sm": ["14px", {"lineHeight": "1.4", "fontWeight": "400"}],
+                      "body-md": ["16px", {"lineHeight": "1.5", "fontWeight": "400"}],
+                      "display-lg": ["56px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                      "room-code": ["56px", {"lineHeight": "1", "letterSpacing": "0.05em", "fontWeight": "900"}],
+                      "label-caps": ["12px", {"lineHeight": "1", "fontWeight": "600"}],
+                      "h1": ["24px", {"lineHeight": "1.3", "fontWeight": "700"}],
+                      "display-lg-mobile": ["40px", {"lineHeight": "1.1", "letterSpacing": "-0.02em", "fontWeight": "800"}],
+                      "label-timer": ["18px", {"lineHeight": "1", "fontWeight": "700"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        /* Embers Background Pattern */
+        .ember-bg {
+            background-color: #1f0f0b;
+            background-image: radial-gradient(circle at 50% 100%, rgba(255, 69, 0, 0.15) 0%, transparent 50%),
+                              radial-gradient(circle at 20% 80%, rgba(204, 55, 0, 0.1) 0%, transparent 30%);
+            background-attachment: fixed;
+        }
+        
+        /* Custom scrollbar for chat */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #2A2A2A;
+            border-radius: 9999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4D4D4D;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md h-screen overflow-hidden flex flex-col ember-bg">
+<!-- TopAppBar -->
+<header class="bg-surface/80 dark:bg-surface/80 fixed top-0 w-full z-50 backdrop-blur-md shadow-[0_0_20px_rgba(255,69,0,0.15)] flex justify-between items-center h-header-height px-gutter-sm md:px-gutter-md max-w-container-max-desktop mx-auto inset-x-0">
+<div class="font-display-lg-mobile text-display-lg-mobile md:font-display-lg md:text-display-lg text-primary tracking-tight">
+            VanishRoom
+        </div>
+<div class="flex items-center gap-4 text-primary">
+<button class="hover:scale-105 hover:shadow-[0_0_12px_rgba(255,69,0,0.3)] transition-all duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">timer</span>
+</button>
+<button class="hover:scale-105 hover:shadow-[0_0_12px_rgba(255,69,0,0.3)] transition-all duration-200">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">group</span>
+</button>
+</div>
+</header>
+<!-- 5 Minute Warning Banner -->
+<div class="fixed top-header-height w-full z-40 bg-fire-600 shadow-[0_0_15px_rgba(255,69,0,0.4)]">
+<div class="max-w-container-max-desktop mx-auto px-gutter-sm md:px-gutter-md py-3 flex items-center justify-between text-pure-black">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">local_fire_department</span>
+<p class="font-body-sm text-body-sm font-semibold">Room expires in 5 minutes. Create a new room.</p>
+</div>
+<button class="text-pure-black/70 hover:text-pure-black transition-colors">
+<span class="material-symbols-outlined">close</span>
+</button>
+</div>
+</div>
+<!-- Main Chat Canvas -->
+<!-- Add padding to account for header + banner -->
+<main class="flex-1 overflow-y-auto w-full max-w-container-max-desktop mx-auto px-gutter-sm md:px-gutter-md pt-[calc(var(--spacing-header-height)+50px)] pb-[calc(var(--spacing-input-bar-height)+20px)] flex flex-col justify-end">
+<!-- Chat Messages Container -->
+<div class="flex flex-col gap-4 w-full">
+<!-- Room Info / Timestamp -->
+<div class="text-center mb-6">
+<span class="bg-ash-800 text-ash-400 font-label-caps text-label-caps px-3 py-1 rounded-full border border-ash-700/50">
+                    Room X9V2A created
+                </span>
+</div>
+<!-- Received Message -->
+<div class="flex flex-col items-start w-full max-w-[75%] self-start group">
+<div class="text-ash-400 font-label-caps text-label-caps mb-1 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    Anonymous • 10:42 PM
+                </div>
+<div class="bg-[#2A2A2A] text-ash-200 px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm backdrop-blur-sm border border-ash-700/30">
+<p class="font-body-md text-body-md">Did you get the keys?</p>
+</div>
+</div>
+<!-- Sent Message -->
+<div class="flex flex-col items-end w-full max-w-[75%] self-end group">
+<div class="text-ash-400 font-label-caps text-label-caps mb-1 mr-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    You • 10:45 PM
+                </div>
+<div class="bg-[#CC3700] text-[#fddbd3] px-4 py-3 rounded-2xl rounded-br-sm shadow-[0_0_10px_rgba(255,69,0,0.1)]">
+<p class="font-body-md text-body-md">Yeah, I'm heading over now. Ensure the server wipes are scheduled.</p>
+</div>
+</div>
+<!-- Received Message -->
+<div class="flex flex-col items-start w-full max-w-[75%] self-start group">
+<div class="text-ash-400 font-label-caps text-label-caps mb-1 ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    Anonymous • 10:46 PM
+                </div>
+<div class="bg-[#2A2A2A] text-ash-200 px-4 py-3 rounded-2xl rounded-bl-sm shadow-sm backdrop-blur-sm border border-ash-700/30">
+<p class="font-body-md text-body-md">They are. We have 5 minutes left on this channel.</p>
+</div>
+</div>
+<!-- Sent Message -->
+<div class="flex flex-col items-end w-full max-w-[75%] self-end group">
+<div class="text-ash-400 font-label-caps text-label-caps mb-1 mr-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    You • 10:48 PM
+                </div>
+<div class="bg-[#CC3700] text-[#fddbd3] px-4 py-3 rounded-2xl rounded-br-sm shadow-[0_0_10px_rgba(255,69,0,0.1)]">
+<p class="font-body-md text-body-md">Understood. I'll initiate the sequence.</p>
+</div>
+</div>
+<!-- Typing indicator -->
+<div class="flex items-center gap-2 self-start mt-2 px-4 py-2 bg-[#2A2A2A]/50 rounded-full border border-ash-700/20 backdrop-blur-sm">
+<div class="w-1.5 h-1.5 bg-ash-400 rounded-full animate-[bounce_1.4s_infinite_ease-in-out_both]" style="animation-delay: -0.32s;"></div>
+<div class="w-1.5 h-1.5 bg-ash-400 rounded-full animate-[bounce_1.4s_infinite_ease-in-out_both]" style="animation-delay: -0.16s;"></div>
+<div class="w-1.5 h-1.5 bg-ash-400 rounded-full animate-[bounce_1.4s_infinite_ease-in-out_both]"></div>
+</div>
+</div>
+</main>
+<!-- Chat Input Area -->
+<div class="fixed bottom-0 w-full bg-gradient-to-t from-background via-background/95 to-transparent pt-8 pb-4 z-40">
+<div class="max-w-container-max-desktop mx-auto px-gutter-sm md:px-gutter-md">
+<div class="bg-ash-700 rounded-full p-1.5 flex items-center gap-2 border border-ash-600/30 focus-within:border-fire-500 focus-within:shadow-[0_0_12px_rgba(255,69,0,0.2)] transition-all duration-300 backdrop-blur-md h-input-bar-height">
+<button class="w-10 h-10 flex items-center justify-center text-ash-400 hover:text-ash-200 transition-colors shrink-0">
+<span class="material-symbols-outlined">add_circle</span>
+</button>
+<input autocomplete="off" class="flex-1 bg-transparent border-none focus:ring-0 text-ash-200 font-body-md text-body-md placeholder-ash-500 py-2 min-w-0" placeholder="Type a message..." type="text"/>
+<button class="w-12 h-12 bg-gradient-to-br from-fire-500 to-fire-600 rounded-full flex items-center justify-center text-pure-black hover:scale-105 hover:shadow-[0_0_12px_rgba(255,69,0,0.4)] transition-all duration-200 shrink-0">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">send</span>
+</button>
+</div>
+</div>
+</div>
+</body></html>

@@ -1,0 +1,208 @@
+'use strict';
+const {
+  createRoom,
+  joinRoom,
+  deleteRoom,
+  getRoomTimeLeft,
+  incrementRateLimit,
+} = require('./roomManager');
+
+const ROOM_DURATION_MS = 40 * 60 * 1000; // 40 minutes
+const WARNING_5MIN_MS  = 35 * 60 * 1000; // warn at 35 min mark
+const WARNING_1MIN_MS  = 39 * 60 * 1000; // warn at 39 min mark
+
+// Track active room timers so we can clear them on early cleanup
+const roomTimers = new Map(); // code → [timer1, timer2, timer3]
+
+/**
+ * Schedule the three server-side timed events for a room.
+ */
+function scheduleRoomTimers(io, code, createdAt) {
+  const now = Date.now();
+  const elapsed = now - createdAt;
+
+  const delay5min  = Math.max(WARNING_5MIN_MS - elapsed, 0);
+  const delay1min  = Math.max(WARNING_1MIN_MS - elapsed, 0);
+  const delayExpire = Math.max(ROOM_DURATION_MS - elapsed, 0);
+
+  const t1 = setTimeout(async () => {
+    io.to(code).emit('room_warning', { minutesLeft: 5 });
+    console.log(`⚠️  [${code}] 5-minute warning sent`);
+  }, delay5min);
+
+  const t2 = setTimeout(async () => {
+    io.to(code).emit('room_warning', { minutesLeft: 1 });
+    console.log(`⚠️  [${code}] 1-minute warning sent`);
+  }, delay1min);
+
+  const t3 = setTimeout(async () => {
+    console.log(`💀 [${code}] Room expiring`);
+    io.to(code).emit('room_expired');
+
+    // Force all sockets out of the room
+    const sockets = await io.in(code).fetchSockets();
+    for (const s of sockets) {
+      s.leave(code);
+    }
+
+    // Clean Redis
+    await deleteRoom(code);
+    roomTimers.delete(code);
+  }, delayExpire);
+
+  // Keep references for cleanup
+  roomTimers.set(code, [t1, t2, t3]);
+}
+
+/**
+ * Cancel and remove timers for a room (e.g. if room is manually deleted).
+ */
+function clearRoomTimers(code) {
+  const timers = roomTimers.get(code);
+  if (timers) {
+    timers.forEach(clearTimeout);
+    roomTimers.delete(code);
+  }
+}
+
+/**
+ * Main Socket.IO handler — registers all events on each socket connection.
+ */
+function socketHandler(io) {
+  io.on('connection', (socket) => {
+    const clientIp = socket.handshake.headers['x-forwarded-for']
+      || socket.handshake.address
+      || 'unknown';
+
+    console.log(`🔌 Socket connected: ${socket.id} from ${clientIp}`);
+
+    // ── create_room ────────────────────────────────────────────────────────────
+    socket.on('create_room', async (data, callback) => {
+      try {
+        // Rate limiting: 3 rooms per IP per day
+        const count = await incrementRateLimit(clientIp);
+        if (count > 3) {
+          return callback({
+            success: false,
+            error: 'Rate limit reached. Maximum 3 rooms per day.',
+          });
+        }
+
+        const { code, createdAt } = await createRoom();
+        socket.join(code);
+
+        // Track which room this socket created
+        socket.data.roomCode = code;
+
+        // Schedule server-side timers
+        scheduleRoomTimers(io, code, createdAt);
+
+        console.log(`🏠 Room created: ${code}`);
+
+        callback({ success: true, code, createdAt });
+      } catch (err) {
+        console.error('create_room error:', err.message);
+        callback({ success: false, error: 'Failed to create room.' });
+      }
+    });
+
+    // ── join_room ──────────────────────────────────────────────────────────────
+    socket.on('join_room', async ({ code }, callback) => {
+      try {
+        const upperCode = code.toUpperCase().trim();
+        const room = await joinRoom(upperCode);
+
+        if (!room) {
+          return callback({
+            success: false,
+            error: 'Room not found or expired.',
+          });
+        }
+
+        socket.join(upperCode);
+        socket.data.roomCode = upperCode;
+
+        // Notify others in room
+        socket.to(upperCode).emit('user_joined', {
+          message: 'Someone joined the room',
+        });
+
+        // Count members in room
+        const members = io.sockets.adapter.rooms.get(upperCode);
+        const userCount = members ? members.size : 1;
+
+        // Broadcast updated user count to all in room
+        io.to(upperCode).emit('user_count', { count: userCount });
+
+        // Ensure timers are running for this room (handles server restart scenario)
+        if (!roomTimers.has(upperCode)) {
+          scheduleRoomTimers(io, upperCode, room.createdAt);
+        }
+
+        const timeLeft = await getRoomTimeLeft(upperCode);
+
+        console.log(`🚪 Socket ${socket.id} joined room: ${upperCode}`);
+
+        callback({
+          success: true,
+          code: upperCode,
+          createdAt: room.createdAt,
+          timeLeft: timeLeft > 0 ? timeLeft : 0,
+        });
+      } catch (err) {
+        console.error('join_room error:', err.message);
+        callback({ success: false, error: 'Failed to join room.' });
+      }
+    });
+
+    // ── send_message ───────────────────────────────────────────────────────────
+    socket.on('send_message', ({ room, message, type = 'text' }) => {
+      if (!room || !message) return;
+
+      const upperRoom = room.toUpperCase();
+
+      // Validate the socket is actually in this room
+      if (!socket.rooms.has(upperRoom)) return;
+
+      // Broadcast to EVERYONE ELSE in the room (never stored)
+      socket.to(upperRoom).emit('receive_message', {
+        message,
+        type,
+        timestamp: Date.now(),
+        senderId: socket.id,
+      });
+    });
+
+    // ── leave_room ─────────────────────────────────────────────────────────────
+    socket.on('leave_room', ({ code }) => {
+      const upperCode = code.toUpperCase();
+      socket.leave(upperCode);
+
+      const members = io.sockets.adapter.rooms.get(upperCode);
+      const userCount = members ? members.size : 0;
+
+      io.to(upperCode).emit('user_count', { count: userCount });
+      socket.to(upperCode).emit('user_left', { message: 'Someone left the room' });
+    });
+
+    // ── disconnect ─────────────────────────────────────────────────────────────
+    socket.on('disconnect', () => {
+      const roomCode = socket.data.roomCode;
+      if (roomCode) {
+        // Update user count in all rooms this socket was in
+        const members = io.sockets.adapter.rooms.get(roomCode);
+        const userCount = members ? members.size : 0;
+        io.to(roomCode).emit('user_count', { count: userCount });
+
+        if (userCount === 0) {
+          console.log(`🏚️  Room ${roomCode} is now empty`);
+          // Don't delete it — let Redis TTL clean up naturally
+          // (rooms can be rejoined until they expire)
+        }
+      }
+      console.log(`🔌 Socket disconnected: ${socket.id}`);
+    });
+  });
+}
+
+module.exports = socketHandler;
