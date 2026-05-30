@@ -35,14 +35,12 @@ const io = new Server(server, {
 });
 
 // Redis setup – only once
-let pubClient, subClient;
-
 createClient()
   .then(async (redisClient) => {
     console.log('✅ Redis client ready');
-    pubClient = redisClient;
-    subClient = redisClient.duplicate();
-    await subClient.connect(); // crucial for ioredis
+    const pubClient = redisClient;
+    const subClient = redisClient.duplicate();
+    await subClient.connect();
     console.log('✅ Redis pub/sub client ready');
 
     io.adapter(createAdapter(pubClient, subClient));
