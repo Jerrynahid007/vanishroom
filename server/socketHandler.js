@@ -89,7 +89,7 @@ function socketHandler(io) {
         }
 
         const { code, createdAt } = await createRoom();
-        socket.join(code);
+        await socket.join(code);
 
         // Track which room this socket created
         socket.data.roomCode = code;
@@ -98,6 +98,7 @@ function socketHandler(io) {
         scheduleRoomTimers(io, code, createdAt);
 
         console.log(`🏠 Room created: ${code}`);
+        console.log('[create_room] socket.rooms', [...socket.rooms]);
 
         callback({ success: true, code, createdAt });
       } catch (err) {
@@ -121,15 +122,17 @@ function socketHandler(io) {
           });
         }
 
-        socket.join(upperCode);
+        await socket.join(upperCode);
         socket.data.roomCode = upperCode;
+
+        console.log('[join_room] socket.rooms after join', [...socket.rooms]);
 
         // Notify others in room (excluding the new socket)
         socket.to(upperCode).emit('user_joined', {
           message: 'Someone joined the room',
         });
 
-        // ✅ Get accurate user count using fetchSockets (works with Redis adapter)
+        // ✅ Get accurate user count using fetchSockets
         const sockets = await io.in(upperCode).fetchSockets();
         const userCount = sockets.length;
 
@@ -158,7 +161,7 @@ function socketHandler(io) {
     });
 
     // ── send_message ───────────────────────────────────────────────────────────
-    socket.on('send_message', ({ room, message, type = 'text' }) => {
+    socket.on('send_message', async ({ room, message, type = 'text' }) => {
       if (!room || !message) {
         console.warn('[send_message] missing room or message', { room, message, socketId: socket.id });
         return;
@@ -169,7 +172,12 @@ function socketHandler(io) {
       console.log('[send_message]', { socketId: socket.id, roomRequested: room, upperRoom, isInRoom, type });
 
       if (!isInRoom) {
-        console.warn(`[send_message] sender not in room ${upperRoom}`, { socketId: socket.id, rooms: [...socket.rooms] });
+        const socketsInRoom = await io.in(upperRoom).fetchSockets();
+        console.warn(`[send_message] sender not in room ${upperRoom}`, {
+          socketId: socket.id,
+          rooms: [...socket.rooms],
+          roomSockets: socketsInRoom.map((s) => s.id),
+        });
         return;
       }
 
@@ -183,10 +191,9 @@ function socketHandler(io) {
 
     // ── leave_room ─────────────────────────────────────────────────────────────
     socket.on('leave_room', async ({ code }) => {
-      const upperCode = code.toUpperCase();
-      socket.leave(upperCode);
+      const upperCode = String(code || '').toUpperCase().trim();
+      await socket.leave(upperCode);
 
-      // ✅ Use fetchSockets for accurate count
       const sockets = await io.in(upperCode).fetchSockets();
       const userCount = sockets.length;
 

@@ -420,6 +420,7 @@ export default function Room() {
   const [userCount, setUserCount] = useState(1)
   const [joined, setJoined] = useState(false)
   const [error, setError] = useState('')
+  const [hasJoinedOnce, setHasJoinedOnce] = useState(false)
 
   const [show5MinBanner, setShow5MinBanner] = useState(false)
   const [show1MinModal, setShow1MinModal] = useState(false)
@@ -454,67 +455,54 @@ export default function Room() {
     return () => clearInterval(timerRef.current)
   }, [joined, expired])
 
-  // Initial join on mount (only if not already joined)
   useEffect(() => {
-    if (!socket || !roomCode || joined) return
+    if (!socket || !roomCode) return
 
     const state = location.state || {}
     const stateTimeLeft = state.timeLeft
 
-    if (stateTimeLeft != null) {
-      setTimeLeft(Math.max(0, stateTimeLeft))
-      setJoined(true)
-      return
-    }
+    const joinRoom = () => {
+      if (!socket || !roomCode) return
 
-    console.debug('[Room] initial join_room', { roomCode })
-    socket.emit('join_room', { code: roomCode }, (res) => {
-      if (res.success) {
-        setTimeLeft(Math.max(0, res.timeLeft || 2400))
-        setJoined(true)
-        addSystemMessage('You joined the room.')
-      } else {
-        setError(res.error || 'Failed to join room.')
-      }
-    })
-  }, [socket, roomCode, joined, location.state])
-
-  // Mark as joined if arrived from Create flow
-  useEffect(() => {
-    if (location.state?.timeLeft != null && !joined) {
-      setJoined(true)
-      addSystemMessage('Room created. You are the first one here.')
-    }
-  }, [location.state, joined])
-
-  // 🔥 NEW: Re-join room whenever socket connects (including reconnections)
-  useEffect(() => {
-    if (!socket || !roomCode || joined) return
-
-    const onConnect = () => {
-      console.debug('[Room] socket reconnected, rejoining', roomCode)
+      console.debug('[Room] emit join_room', { roomCode, socketId: socket.id })
       socket.emit('join_room', { code: roomCode }, (res) => {
         if (res.success) {
           setTimeLeft(Math.max(0, res.timeLeft || 2400))
           setJoined(true)
-          addSystemMessage('Rejoined the room.')
+          if (!hasJoinedOnce) {
+            addSystemMessage(stateTimeLeft != null ? 'Room created. You are the first one here.' : 'You joined the room.')
+            setHasJoinedOnce(true)
+          } else {
+            addSystemMessage('Rejoined the room.')
+          }
         } else {
-          console.warn('[Room] failed to rejoin on connect', res.error)
+          setError(res.error || 'Failed to join room.')
         }
       })
     }
 
+    const handleConnect = () => {
+      console.debug('[Room] socket connected/reconnected, joining room', roomCode)
+      joinRoom()
+    }
+
+    const handleDisconnect = () => {
+      console.debug('[Room] socket disconnected', socket.id)
+      setJoined(false)
+    }
+
+    socket.on('connect', handleConnect)
+    socket.on('disconnect', handleDisconnect)
+
     if (socket.connected) {
-      // Already connected? Then we must have already joined, but if not, do it now.
-      if (!joined) onConnect()
-    } else {
-      socket.on('connect', onConnect)
+      joinRoom()
     }
 
     return () => {
-      socket.off('connect', onConnect)
+      socket.off('connect', handleConnect)
+      socket.off('disconnect', handleDisconnect)
     }
-  }, [socket, roomCode, joined])
+  }, [socket, roomCode, location.state])
 
   // Socket event listeners
   useEffect(() => {

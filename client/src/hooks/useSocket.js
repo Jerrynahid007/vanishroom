@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:4000'
+const SERVER_URL = (import.meta.env.VITE_SERVER_URL || 'http://localhost:4000').replace(/\/$/, '')
 
 let sharedSocket = null
 let refCount = 0
@@ -20,13 +20,14 @@ export function useSocket() {
       sharedSocket = io(SERVER_URL, {
         transports: ['websocket', 'polling'],
         reconnection: true,
-        reconnectionAttempts: 5,
+        reconnectionAttempts: Infinity,
         reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
         autoConnect: true,
       })
     }
 
-    refCount++
+    refCount += 1
     socketRef.current = sharedSocket
 
     const onConnect = () => setConnected(true)
@@ -41,7 +42,7 @@ export function useSocket() {
       sharedSocket.off('connect', onConnect)
       sharedSocket.off('disconnect', onDisconnect)
 
-      refCount--
+      refCount -= 1
       if (refCount === 0) {
         sharedSocket.disconnect()
         sharedSocket = null
