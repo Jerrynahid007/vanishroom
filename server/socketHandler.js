@@ -109,10 +109,13 @@ function socketHandler(io) {
     // ── join_room ──────────────────────────────────────────────────────────────
     socket.on('join_room', async ({ code }, callback) => {
       try {
-        const upperCode = code.toUpperCase().trim();
+        const upperCode = String(code || '').toUpperCase().trim();
+        console.log(`[join_room] requested: ${code} normalized: ${upperCode} socket:${socket.id}`);
+
         const room = await joinRoom(upperCode);
 
         if (!room) {
+          console.warn(`[join_room] room not found: ${upperCode}`);
           return callback({
             success: false,
             error: 'Room not found or expired.',
@@ -141,7 +144,7 @@ function socketHandler(io) {
 
         const timeLeft = await getRoomTimeLeft(upperCode);
 
-        console.log(`🚪 Socket ${socket.id} joined room: ${upperCode}`);
+        console.log(`🚪 Socket ${socket.id} joined room: ${upperCode} members=${userCount}`);
 
         callback({
           success: true,
@@ -157,12 +160,20 @@ function socketHandler(io) {
 
     // ── send_message ───────────────────────────────────────────────────────────
     socket.on('send_message', ({ room, message, type = 'text' }) => {
-      if (!room || !message) return;
+      if (!room || !message) {
+        console.warn('[send_message] missing room or message', { room, message, socketId: socket.id });
+        return;
+      }
 
-      const upperRoom = room.toUpperCase();
+      const upperRoom = String(room || '').toUpperCase().trim();
+      const isInRoom = socket.rooms.has(upperRoom);
+      console.log('[send_message]', { socketId: socket.id, roomRequested: room, upperRoom, isInRoom, type });
 
       // Validate the socket is actually in this room
-      if (!socket.rooms.has(upperRoom)) return;
+      if (!isInRoom) {
+        console.warn(`[send_message] sender not in room ${upperRoom}`, { socketId: socket.id, rooms: [...socket.rooms] });
+        return;
+      }
 
       // Broadcast to EVERYONE ELSE in the room (never stored)
       socket.to(upperRoom).emit('receive_message', {

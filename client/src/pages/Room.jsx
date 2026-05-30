@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import Picker from '@emoji-mart/react'
 import data from '@emoji-mart/data'
@@ -551,7 +551,7 @@ export default function Room() {
 
   // Join room on mount
   useEffect(() => {
-    if (!socket || !code) return
+    if (!socket || !roomCode) return
 
     socketIdRef.current = socket.id
 
@@ -566,8 +566,10 @@ export default function Room() {
       return
     }
 
+    console.debug('[Room] join_room', { roomCode })
+
     // Otherwise emit join_room
-    socket.emit('join_room', { code }, (res) => {
+    socket.emit('join_room', { code: roomCode }, (res) => {
       if (res.success) {
         setTimeLeft(Math.max(0, res.timeLeft || 2400))
         setJoined(true)
@@ -576,7 +578,7 @@ export default function Room() {
         setError(res.error || 'Failed to join room.')
       }
     })
-  }, [socket, code]) // eslint-disable-line
+  }, [socket, roomCode]) // eslint-disable-line
 
   // Mark as joined if we arrived from Create flow (state.timeLeft was set)
   useEffect(() => {
@@ -647,7 +649,8 @@ export default function Room() {
     const timestamp = Date.now()
     // Optimistically add to own message list
     addMessage({ message, type, timestamp, isSelf: true })
-    socket.emit('send_message', { room: code, message, type })
+    console.debug('[Room] send_message', { room: roomCode, message, type, socketId: socket.id })
+    socket.emit('send_message', { room: roomCode, message, type })
   }
 
   const handleCreateNew = () => navigate('/')
@@ -671,7 +674,7 @@ export default function Room() {
       {intensified && <EmberBackground intensified />}
 
       {/* Header */}
-      <ChatHeader code={code?.toUpperCase()} timeLeft={timeLeft} userCount={userCount} />
+      <ChatHeader code={roomCode} timeLeft={timeLeft} userCount={userCount} />
 
       {/* 5-min warning banner */}
       <WarningBanner

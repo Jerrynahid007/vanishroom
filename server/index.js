@@ -48,19 +48,16 @@ let pubClient;
 let subClient;
 
 createClient()
-  .then((client) => {
+  .then(async (client) => {
     redisClient = client;
     console.log('✅ Redis client ready');
 
     // Set up pub/sub for Socket.IO adapter
     pubClient = redisClient;
     subClient = redisClient.duplicate();
-    
-    // No need to call subClient.connect() – ioredis duplicate shares connection automatically
-    // Just return the adapter setup
-    return Promise.resolve();
-  })
-  .then(() => {
+    await subClient.connect();
+    console.log('✅ Redis pub/sub client ready');
+
     // Attach the Redis adapter to Socket.IO
     io.adapter(createAdapter(pubClient, subClient));
     console.log('✅ Socket.IO Redis adapter attached');
