@@ -11,12 +11,11 @@ const { createAdapter } = require('@socket.io/redis-adapter');
 const app = express();
 const server = http.createServer(app);
 
-// ── CORS ──────────────────────────────────────────────────────────────────────
+// CORS
 const allowedOrigins = [
   process.env.CLIENT_ORIGIN || 'http://localhost:5173',
   'http://localhost:3000',
 ];
-
 app.use(cors({
   origin: (origin, cb) => {
     if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
@@ -25,54 +24,38 @@ app.use(cors({
   methods: ['GET', 'POST'],
   credentials: true,
 }));
-
 app.use(express.json());
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
-// ── Health check ──────────────────────────────────────────────────────────────
-app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: Date.now() }));
-
-// ── Socket.IO (will attach adapter after Redis connects) ──────────────────────
+// Socket.IO
 const io = new Server(server, {
-  cors: {
-    origin: allowedOrigins,
-    methods: ['GET', 'POST'],
-    credentials: true,
-  },
+  cors: { origin: allowedOrigins, methods: ['GET', 'POST'], credentials: true },
   pingTimeout: 60000,
   pingInterval: 25000,
 });
 
-// ── Connect to Redis, set up adapter, then start server ──────────────────────
-let redisClient;
-let pubClient;
-let subClient;
+// Redis setup – only once
+let pubClient, subClient;
 
 createClient()
-  .then(async (client) => {
-    redisClient = client;
+  .then(async (redisClient) => {
     console.log('✅ Redis client ready');
-
-    // Set up pub/sub for Socket.IO adapter
     pubClient = redisClient;
     subClient = redisClient.duplicate();
-    await subClient.connect();
+    await subClient.connect(); // crucial for ioredis
     console.log('✅ Redis pub/sub client ready');
 
-    // Attach the Redis adapter to Socket.IO
     io.adapter(createAdapter(pubClient, subClient));
     console.log('✅ Socket.IO Redis adapter attached');
 
-    // Now register your socket event handlers
     socketHandler(io);
 
-    // Start the HTTP server
     const PORT = process.env.PORT || 4000;
     server.listen(PORT, () => {
       console.log(`🔥 VanishRoom server running on port ${PORT}`);
     });
   })
   .catch((err) => {
-    console.error('❌ Failed to connect to Redis:', err.message);
-    console.error('   Make sure REDIS_URL is set correctly');
+    console.error('❌ Redis connection failed:', err.message);
     process.exit(1);
   });

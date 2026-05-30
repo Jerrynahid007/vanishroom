@@ -39,13 +39,11 @@ function MessageBubble({ msg, isSelf }) {
     <div
       className={`flex items-end gap-2 mb-3 animate-float-up ${isSelf ? 'flex-row-reverse' : 'flex-row'}`}
     >
-      {/* Dot indicator */}
       <span
         className="w-2 h-2 rounded-full flex-shrink-0 mb-1"
         style={{ background: isSelf ? '#FF4500' : '#555555' }}
         aria-hidden="true"
       />
-
       <div className={`flex flex-col ${isSelf ? 'items-end' : 'items-start'} max-w-[75%]`}>
         {msg.type === 'gif' ? (
           <div className="relative">
@@ -55,10 +53,7 @@ function MessageBubble({ msg, isSelf }) {
               className="rounded-xl object-cover"
               style={{ maxWidth: '240px', maxHeight: '180px', borderRadius: '16px' }}
             />
-            <span
-              className="absolute bottom-2 right-2 text-white text-xs font-bold px-1.5 py-0.5 rounded"
-              style={{ background: 'rgba(0,0,0,0.6)', fontSize: '0.65rem' }}
-            >
+            <span className="absolute bottom-2 right-2 text-white text-xs font-bold px-1.5 py-0.5 rounded" style={{ background: 'rgba(0,0,0,0.6)', fontSize: '0.65rem' }}>
               GIF
             </span>
           </div>
@@ -120,12 +115,7 @@ function WarningBanner({ visible, onDismiss }) {
         <FlameIcon size={16} />
         Room expires in 5 minutes. Create a new room to continue.
       </div>
-      <button
-        onClick={onDismiss}
-        className="text-white hover:scale-125 transition-transform p-1"
-        aria-label="Dismiss warning"
-        style={{ fontSize: '0.9rem' }}
-      >
+      <button onClick={onDismiss} className="text-white hover:scale-125 transition-transform p-1" aria-label="Dismiss warning">
         <CloseIcon size={14} />
       </button>
     </div>
@@ -136,14 +126,7 @@ function WarningBanner({ visible, onDismiss }) {
 function OneMinuteModal({ visible, onCreateNew, onStay }) {
   return (
     <Modal isOpen={visible} preventClose>
-      <div
-        className="p-6 w-[300px]"
-        style={{
-          background: '#1A1A1A',
-          border: '1px solid #FF4500',
-          borderRadius: '20px',
-        }}
-      >
+      <div className="p-6 w-[300px]" style={{ background: '#1A1A1A', border: '1px solid #FF4500', borderRadius: '20px' }}>
         <div className="flex justify-center mb-4">
           <HourglassIcon size={48} className="text-red-500 animate-spin-slow" />
         </div>
@@ -151,18 +134,10 @@ function OneMinuteModal({ visible, onCreateNew, onStay }) {
         <p className="text-ash-300 text-center mb-6" style={{ fontSize: '0.85rem' }}>
           This room will self-destruct. Save anything important now.
         </p>
-        <button
-          onClick={onCreateNew}
-          className="btn-fire w-full mb-2"
-          style={{ height: '44px', borderRadius: '12px' }}
-        >
+        <button onClick={onCreateNew} className="btn-fire w-full mb-2" style={{ height: '44px', borderRadius: '12px' }}>
           Create New Room
         </button>
-        <button
-          onClick={onStay}
-          className="btn-ghost w-full"
-          style={{ height: '44px', borderRadius: '12px' }}
-        >
+        <button onClick={onStay} className="btn-ghost w-full" style={{ height: '44px', borderRadius: '12px' }}>
           Stay
         </button>
       </div>
@@ -193,10 +168,7 @@ function ExpiredOverlay({ visible, onCreateNew }) {
   if (!visible) return null
 
   return (
-    <div
-      className="fixed inset-0 flex flex-col items-center justify-center z-50 animate-fade-in"
-      style={{ background: 'rgba(0,0,0,0.92)' }}
-    >
+    <div className="fixed inset-0 flex flex-col items-center justify-center z-50 animate-fade-in" style={{ background: 'rgba(0,0,0,0.92)' }}>
       <span className="text-6xl mb-6 animate-ember-in" role="img" aria-label="Fire">🔥</span>
       <h2 className="text-ash-300 font-semibold mb-3 text-center" style={{ fontSize: '1.5rem' }}>
         This room has burned out.
@@ -204,11 +176,7 @@ function ExpiredOverlay({ visible, onCreateNew }) {
       <p className="text-ash-500 mb-8 text-center" style={{ fontSize: '0.95rem' }}>
         Redirecting in {countdown}…
       </p>
-      <button
-        onClick={onCreateNew}
-        className="btn-fire"
-        style={{ borderRadius: '12px', padding: '12px 32px' }}
-      >
+      <button onClick={onCreateNew} className="btn-fire" style={{ borderRadius: '12px', padding: '12px 32px' }}>
         Create New Room
       </button>
     </div>
@@ -258,11 +226,7 @@ function GifPicker({ visible, onClose, onSelect }) {
   const noKey = !GIPHY_KEY
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex flex-col animate-fade-in"
-      style={{ background: 'rgba(11,11,11,0.97)' }}
-    >
-      {/* Header */}
+    <div className="fixed inset-0 z-50 flex flex-col animate-fade-in" style={{ background: 'rgba(11,11,11,0.97)' }}>
       <div className="flex items-center gap-3 p-4 border-b border-ash-700">
         <button onClick={onClose} className="text-ash-400 hover:text-ash-100 transition-colors">
           <CloseIcon size={20} />
@@ -279,8 +243,6 @@ function GifPicker({ visible, onClose, onSelect }) {
         />
         <span className="text-ash-500 text-xs">Powered by GIPHY</span>
       </div>
-
-      {/* Grid */}
       <div className="flex-1 overflow-y-auto p-3">
         {noKey && (
           <div className="flex flex-col items-center justify-center h-full text-ash-500 text-sm text-center gap-2">
@@ -301,12 +263,7 @@ function GifPicker({ visible, onClose, onSelect }) {
                 onClick={() => { onSelect(gif.images.fixed_height.url); onClose() }}
                 className="rounded-xl overflow-hidden hover:ring-2 hover:ring-fire-500 transition-all aspect-video"
               >
-                <img
-                  src={gif.images.fixed_height_small.url}
-                  alt={gif.title}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
+                <img src={gif.images.fixed_height_small.url} alt={gif.title} className="w-full h-full object-cover" loading="lazy" />
               </button>
             ))}
             {gifs.length === 0 && (
@@ -348,28 +305,18 @@ function ChatHeader({ code, timeLeft, userCount }) {
         borderBottom: '1px solid #2A2A2A',
       }}
     >
-      {/* Left: Room code + copy */}
-      <button
-        onClick={handleCopy}
-        className="flex items-center gap-1.5 text-ash-300 hover:text-fire-500 transition-colors group"
-        aria-label="Copy room code"
-        style={{ fontSize: '0.85rem', fontWeight: 500 }}
-      >
+      <button onClick={handleCopy} className="flex items-center gap-1.5 text-ash-300 hover:text-fire-500 transition-colors group" style={{ fontSize: '0.85rem', fontWeight: 500 }}>
         <span className="tracking-widest font-semibold">{code}</span>
         <span className="text-ash-500 group-hover:text-fire-500">
           {copied ? <CheckIcon size={14} className="text-green-400" /> : <CopyIcon size={14} />}
         </span>
       </button>
-
-      {/* Center: Timer */}
       <div className="flex items-center gap-1">
         <ClockIcon size={14} className={isUnder1 ? 'text-red-400' : 'text-fire-500'} />
         <span className={`font-bold ${timerClass}`} style={{ fontSize: '1.1rem' }}>
           {formatTime(timeLeft)}
         </span>
       </div>
-
-      {/* Right: User count */}
       <div className="flex items-center gap-1.5 text-ash-300" style={{ fontSize: '0.8rem' }}>
         <span className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_4px_rgba(52,199,89,0.8)]" />
         <UsersIcon size={14} className="text-ash-500" />
@@ -413,83 +360,33 @@ function InputBar({ onSend, disabled }) {
 
   return (
     <>
-      {/* Emoji picker slide-up */}
       {showEmoji && (
-        <div
-          className="fixed bottom-[60px] left-0 right-0 z-30 animate-slide-up"
-          style={{ maxWidth: '420px', margin: '0 auto', padding: '0 12px 8px' }}
-        >
-          <Picker
-            data={data}
-            onEmojiSelect={handleEmojiSelect}
-            theme="dark"
-            previewPosition="none"
-            skinTonePosition="none"
-          />
+        <div className="fixed bottom-[60px] left-0 right-0 z-30 animate-slide-up" style={{ maxWidth: '420px', margin: '0 auto', padding: '0 12px 8px' }}>
+          <Picker data={data} onEmojiSelect={handleEmojiSelect} theme="dark" previewPosition="none" skinTonePosition="none" />
         </div>
       )}
-
-      {/* GIF overlay */}
-      <GifPicker
-        visible={showGif}
-        onClose={() => setShowGif(false)}
-        onSelect={handleGifSelect}
-      />
-
-      <div
-        className="fixed bottom-0 left-0 right-0 z-20 flex items-center gap-2 px-3 safe-bottom"
-        style={{
-          height: '60px',
-          background: 'rgba(26,26,26,0.97)',
-          backdropFilter: 'blur(12px)',
-          borderTop: '1px solid #2A2A2A',
-        }}
-      >
-        {/* Emoji button */}
-        <button
-          id="emoji-btn"
-          onClick={() => { setShowEmoji((v) => !v); setShowGif(false) }}
-          className="text-ash-400 hover:text-fire-500 transition-colors rounded-lg p-1.5 hover:bg-white/5"
-          aria-label="Open emoji picker"
-          style={{ minWidth: '40px', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
+      <GifPicker visible={showGif} onClose={() => setShowGif(false)} onSelect={handleGifSelect} />
+      <div className="fixed bottom-0 left-0 right-0 z-20 flex items-center gap-2 px-3 safe-bottom" style={{ height: '60px', background: 'rgba(26,26,26,0.97)', backdropFilter: 'blur(12px)', borderTop: '1px solid #2A2A2A' }}>
+        <button onClick={() => { setShowEmoji((v) => !v); setShowGif(false) }} className="text-ash-400 hover:text-fire-500 transition-colors rounded-lg p-1.5 hover:bg-white/5" style={{ minWidth: '40px', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <SmileIcon size={22} />
         </button>
-
-        {/* GIF button */}
-        <button
-          id="gif-btn"
-          onClick={() => { setShowGif((v) => !v); setShowEmoji(false) }}
-          className="text-ash-400 hover:text-fire-500 border border-ash-600 hover:border-fire-500 transition-all rounded-full px-3 font-bold"
-          style={{ fontSize: '0.75rem', height: '32px', letterSpacing: '0.05em' }}
-          aria-label="Open GIF picker"
-        >
+        <button onClick={() => { setShowGif((v) => !v); setShowEmoji(false) }} className="text-ash-400 hover:text-fire-500 border border-ash-600 hover:border-fire-500 transition-all rounded-full px-3 font-bold" style={{ fontSize: '0.75rem', height: '32px', letterSpacing: '0.05em' }}>
           GIF
         </button>
-
-        {/* Text input */}
         <input
           ref={inputRef}
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={() => { setShowEmoji(false) }}
+          onFocus={() => setShowEmoji(false)}
           placeholder="Type a message…"
           disabled={disabled}
           className="flex-1 text-white placeholder-ash-500 bg-ash-700 border-none outline-none px-4 disabled:opacity-50"
-          style={{
-            height: '44px',
-            borderRadius: '22px',
-            fontSize: '0.95rem',
-          }}
-          aria-label="Message input"
+          style={{ height: '44px', borderRadius: '22px', fontSize: '0.95rem' }}
           autoComplete="off"
         />
-
-        {/* Send button */}
         <button
-          id="send-btn"
           onClick={handleSend}
           disabled={!hasText || disabled}
           className="flex items-center justify-center flex-shrink-0 transition-all duration-200 disabled:cursor-not-allowed"
@@ -497,12 +394,9 @@ function InputBar({ onSend, disabled }) {
             width: '44px',
             height: '44px',
             borderRadius: '50%',
-            background: hasText && !disabled
-              ? 'linear-gradient(135deg, #FF4500, #FF8C00)'
-              : '#3A3A3A',
+            background: hasText && !disabled ? 'linear-gradient(135deg, #FF4500, #FF8C00)' : '#3A3A3A',
             boxShadow: hasText && !disabled ? '0 0 10px rgba(255,69,0,0.3)' : 'none',
           }}
-          aria-label="Send message"
         >
           <SendIcon size={16} className="text-white" />
         </button>
@@ -518,13 +412,15 @@ export default function Room() {
   const navigate = useNavigate()
   const { socket } = useSocket()
 
+  // Normalize room code to uppercase once
+  const roomCode = useMemo(() => String(code || '').toUpperCase().trim(), [code])
+
   const [messages, setMessages] = useState([])
   const [timeLeft, setTimeLeft] = useState(2400)
   const [userCount, setUserCount] = useState(1)
   const [joined, setJoined] = useState(false)
   const [error, setError] = useState('')
 
-  // Warning states
   const [show5MinBanner, setShow5MinBanner] = useState(false)
   const [show1MinModal, setShow1MinModal] = useState(false)
   const [show1MinDismissed, setShow1MinDismissed] = useState(false)
@@ -535,7 +431,16 @@ export default function Room() {
   const timerRef = useRef(null)
   const socketIdRef = useRef(null)
 
-  // Auto-scroll to bottom on new messages
+  // Helper functions defined before they are used
+  const addMessage = (msg) => {
+    setMessages((prev) => [...prev, { ...msg, id: `${Date.now()}-${Math.random()}` }])
+  }
+
+  const addSystemMessage = (text) => {
+    addMessage({ message: text, type: 'system', timestamp: Date.now(), isSelf: false })
+  }
+
+  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
@@ -557,9 +462,7 @@ export default function Room() {
 
     const state = location.state || {}
     const stateTimeLeft = state.timeLeft
-    const createdAt = state.createdAt
 
-    // If we have timeLeft from state, use it
     if (stateTimeLeft != null) {
       setTimeLeft(Math.max(0, stateTimeLeft))
       setJoined(true)
@@ -568,7 +471,6 @@ export default function Room() {
 
     console.debug('[Room] join_room', { roomCode })
 
-    // Otherwise emit join_room
     socket.emit('join_room', { code: roomCode }, (res) => {
       if (res.success) {
         setTimeLeft(Math.max(0, res.timeLeft || 2400))
@@ -578,21 +480,21 @@ export default function Room() {
         setError(res.error || 'Failed to join room.')
       }
     })
-  }, [socket, roomCode]) // eslint-disable-line
+  }, [socket, roomCode, location.state])
 
-  // Mark as joined if we arrived from Create flow (state.timeLeft was set)
+  // Mark as joined if arrived from Create flow
   useEffect(() => {
     if (location.state?.timeLeft != null && !joined) {
       setJoined(true)
       addSystemMessage('Room created. You are the first one here.')
     }
-  }, [location.state, joined]) // eslint-disable-line
+  }, [location.state, joined])
 
   // Socket event listeners
   useEffect(() => {
     if (!socket) return
 
-    const onReceive = ({ message, type, timestamp, senderId }) => {
+    const onReceive = ({ message, type, timestamp }) => {
       addMessage({ message, type, timestamp, isSelf: false })
     }
 
@@ -636,18 +538,9 @@ export default function Room() {
     }
   }, [timeLeft, joined, expired])
 
-  const addMessage = (msg) => {
-    setMessages((prev) => [...prev, { ...msg, id: `${Date.now()}-${Math.random()}` }])
-  }
-
-  const addSystemMessage = (text) => {
-    addMessage({ message: text, type: 'system', timestamp: Date.now(), isSelf: false })
-  }
-
   const handleSend = (message, type) => {
     if (!socket || !joined || expired) return
     const timestamp = Date.now()
-    // Optimistically add to own message list
     addMessage({ message, type, timestamp, isSelf: true })
     console.debug('[Room] send_message', { room: roomCode, message, type, socketId: socket.id })
     socket.emit('send_message', { room: roomCode, message, type })
@@ -670,29 +563,15 @@ export default function Room() {
 
   return (
     <div className="min-h-dvh flex flex-col" style={{ background: 'transparent' }}>
-      {/* Intensified ember background on expiry */}
       {intensified && <EmberBackground intensified />}
-
-      {/* Header */}
       <ChatHeader code={roomCode} timeLeft={timeLeft} userCount={userCount} />
-
-      {/* 5-min warning banner */}
-      <WarningBanner
-        visible={show5MinBanner}
-        onDismiss={() => setShow5MinBanner(false)}
-      />
-
-      {/* 1-min modal */}
+      <WarningBanner visible={show5MinBanner} onDismiss={() => setShow5MinBanner(false)} />
       <OneMinuteModal
         visible={show1MinModal && !show1MinDismissed}
         onCreateNew={handleCreateNew}
         onStay={() => { setShow1MinModal(false); setShow1MinDismissed(true) }}
       />
-
-      {/* Expired overlay */}
       <ExpiredOverlay visible={expired} onCreateNew={handleCreateNew} />
-
-      {/* Message list */}
       <main
         className="flex-1 overflow-y-auto px-4 pt-4"
         style={{
@@ -701,9 +580,6 @@ export default function Room() {
           paddingTop: show5MinBanner ? '60px' : '16px',
           transition: 'padding-top 0.3s ease',
         }}
-        aria-label="Messages"
-        aria-live="polite"
-        aria-atomic="false"
       >
         {messages.length === 0 && joined && (
           <div className="flex flex-col items-center justify-center h-full py-20 text-ash-600 text-sm animate-fade-in">
@@ -712,14 +588,11 @@ export default function Room() {
             <p className="text-xs mt-1 text-ash-700">Messages vanish when the room expires.</p>
           </div>
         )}
-
         {messages.map((msg) => (
           <MessageBubble key={msg.id} msg={msg} isSelf={msg.isSelf} />
         ))}
         <div ref={messagesEndRef} />
       </main>
-
-      {/* Input bar */}
       <InputBar onSend={handleSend} disabled={expired || !joined} />
     </div>
   )
