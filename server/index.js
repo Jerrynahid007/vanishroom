@@ -6,12 +6,11 @@ const cors = require('cors');
 const { Server } = require('socket.io');
 const { createClient } = require('./roomManager');
 const socketHandler = require('./socketHandler');
-const { createAdapter } = require('@socket.io/redis-adapter');
 
 const app = express();
 const server = http.createServer(app);
 
-// CORS Configuration
+// CORS
 const allowedOrigins = [
   process.env.CLIENT_ORIGIN || 'http://localhost:5173',
   'http://localhost:3000',
@@ -25,7 +24,7 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
-app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: Date.now() }));
+app.get('/health', (req, res) => res.json({ status: 'ok' }));
 
 const io = new Server(server, {
   cors: { origin: allowedOrigins, methods: ['GET', 'POST'], credentials: true },
@@ -33,28 +32,11 @@ const io = new Server(server, {
   pingInterval: 25000,
 });
 
-// We'll hold onto the clients so we can use them for the adapter
-let pubClient, subClient;
-
-createClient() // This should already return your main Redis client from roomManager.js
-  .then(async (redisClient) => {
-    console.log('✅ Main Redis client ready');
-    // Use the main client as the "publisher"
-    pubClient = redisClient;
-    // Create a duplicate client for the "subscriber" role.
-    // The duplicate shares the same connection pool but is managed separately.
-    subClient = redisClient.duplicate();
-
-    // Add a small delay to ensure the connection is fully stable before attaching the adapter.
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    // Attach the Redis adapter to Socket.IO
-    io.adapter(createAdapter(pubClient, subClient));
-    console.log('✅ Socket.IO Redis adapter attached');
-
-    // Register your socket event handlers
+// Connect Redis only for room data (no Socket.IO adapter)
+createClient()
+  .then(() => {
+    console.log('✅ Redis connected (room data)');
     socketHandler(io);
-
     const PORT = process.env.PORT || 4000;
     server.listen(PORT, () => {
       console.log(`🔥 VanishRoom server running on port ${PORT}`);
