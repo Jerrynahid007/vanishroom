@@ -6,6 +6,7 @@ const cors = require('cors');
 const { Server } = require('socket.io');
 const { createClient } = require('./roomManager');
 const socketHandler = require('./socketHandler');
+const { createAdapter } = require('@socket.io/redis-adapter');
 
 const app = express();
 const server = http.createServer(app);
@@ -30,7 +31,7 @@ app.use(express.json());
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: Date.now() }));
 
-// ── Socket.IO ─────────────────────────────────────────────────────────────────
+// ── Socket.IO (will attach adapter after Redis connects) ──────────────────────
 const io = new Server(server, {
   cors: {
     origin: allowedOrigins,
@@ -41,16 +42,40 @@ const io = new Server(server, {
   pingInterval: 25000,
 });
 
-// Initialise Redis then start
-createClient().then(() => {
-  socketHandler(io);
+// ── Connect to Redis, set up adapter, then start server ──────────────────────
+let redisClient;
+let pubClient;
+let subClient;
 
-  const PORT = process.env.PORT || 4000;
-  server.listen(PORT, () => {
-    console.log(`🔥 VanishRoom server running on port ${PORT}`);
+createClient()
+  .then((client) => {
+    redisClient = client;
+    console.log('✅ Redis client ready');
+
+    // Set up pub/sub for Socket.IO adapter
+    pubClient = redisClient;
+    subClient = redisClient.duplicate();
+    
+    // No need to call subClient.connect() – ioredis duplicate shares connection automatically
+    // Just return the adapter setup
+    return Promise.resolve();
+  })
+  .then(() => {
+    // Attach the Redis adapter to Socket.IO
+    io.adapter(createAdapter(pubClient, subClient));
+    console.log('✅ Socket.IO Redis adapter attached');
+
+    // Now register your socket event handlers
+    socketHandler(io);
+
+    // Start the HTTP server
+    const PORT = process.env.PORT || 4000;
+    server.listen(PORT, () => {
+      console.log(`🔥 VanishRoom server running on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('❌ Failed to connect to Redis:', err.message);
+    console.error('   Make sure REDIS_URL is set correctly');
+    process.exit(1);
   });
-}).catch((err) => {
-  console.error('❌ Failed to connect to Redis:', err.message);
-  console.error('   Make sure Redis is running: redis-server');
-  process.exit(1);
-});
