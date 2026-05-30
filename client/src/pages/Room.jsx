@@ -454,11 +454,9 @@ export default function Room() {
     return () => clearInterval(timerRef.current)
   }, [joined, expired])
 
-  // Join room on mount
+  // Initial join on mount (only if not already joined)
   useEffect(() => {
-    if (!socket || !roomCode) return
-
-    socketIdRef.current = socket.id
+    if (!socket || !roomCode || joined) return
 
     const state = location.state || {}
     const stateTimeLeft = state.timeLeft
@@ -469,8 +467,7 @@ export default function Room() {
       return
     }
 
-    console.debug('[Room] join_room', { roomCode })
-
+    console.debug('[Room] initial join_room', { roomCode })
     socket.emit('join_room', { code: roomCode }, (res) => {
       if (res.success) {
         setTimeLeft(Math.max(0, res.timeLeft || 2400))
@@ -480,7 +477,7 @@ export default function Room() {
         setError(res.error || 'Failed to join room.')
       }
     })
-  }, [socket, roomCode, location.state])
+  }, [socket, roomCode, joined, location.state])
 
   // Mark as joined if arrived from Create flow
   useEffect(() => {
@@ -489,6 +486,35 @@ export default function Room() {
       addSystemMessage('Room created. You are the first one here.')
     }
   }, [location.state, joined])
+
+  // 🔥 NEW: Re-join room whenever socket connects (including reconnections)
+  useEffect(() => {
+    if (!socket || !roomCode || joined) return
+
+    const onConnect = () => {
+      console.debug('[Room] socket reconnected, rejoining', roomCode)
+      socket.emit('join_room', { code: roomCode }, (res) => {
+        if (res.success) {
+          setTimeLeft(Math.max(0, res.timeLeft || 2400))
+          setJoined(true)
+          addSystemMessage('Rejoined the room.')
+        } else {
+          console.warn('[Room] failed to rejoin on connect', res.error)
+        }
+      })
+    }
+
+    if (socket.connected) {
+      // Already connected? Then we must have already joined, but if not, do it now.
+      if (!joined) onConnect()
+    } else {
+      socket.on('connect', onConnect)
+    }
+
+    return () => {
+      socket.off('connect', onConnect)
+    }
+  }, [socket, roomCode, joined])
 
   // Socket event listeners
   useEffect(() => {
