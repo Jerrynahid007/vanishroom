@@ -188,6 +188,7 @@ function GifPicker({ visible, onClose, onSelect }) {
   const [query, setQuery] = useState('')
   const [gifs, setGifs] = useState([])
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
   const inputRef = useRef(null)
 
   const GIPHY_KEY = import.meta.env.VITE_GIPHY_KEY || ''
@@ -195,14 +196,25 @@ function GifPicker({ visible, onClose, onSelect }) {
   const search = useCallback(async (q) => {
     if (!GIPHY_KEY) return
     setLoading(true)
+    setError('')
     try {
       const endpoint = q.trim()
         ? `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(q)}&limit=18&rating=g`
         : `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_KEY}&limit=18&rating=g`
+      console.log('[GIF Search] Fetching:', endpoint)
       const res = await fetch(endpoint)
+      if (!res.ok) {
+        throw new Error(`GIPHY API error: ${res.status} ${res.statusText}`)
+      }
       const json = await res.json()
+      console.log('[GIF Search] Response:', { dataLength: json.data?.length, meta: json.meta })
+      if (json.meta?.status !== 200) {
+        throw new Error(`GIPHY error: ${json.meta?.msg || 'Unknown error'}`)
+      }
       setGifs(json.data || [])
-    } catch {
+    } catch (err) {
+      console.error('[GIF Search] Error:', err.message)
+      setError(err.message)
       setGifs([])
     } finally {
       setLoading(false)
@@ -250,12 +262,24 @@ function GifPicker({ visible, onClose, onSelect }) {
             <p>Add <code className="text-fire-500">VITE_GIPHY_KEY</code> to <code>.env</code> to enable GIFs.</p>
           </div>
         )}
+        {!noKey && error && (
+          <div className="flex flex-col items-center justify-center h-full text-red-400 text-sm text-center gap-2">
+            <span className="text-3xl">⚠️</span>
+            <p>{error}</p>
+            <button
+              onClick={() => { setError(''); search(query) }}
+              className="mt-2 px-3 py-1 rounded bg-fire-500 text-white text-xs hover:bg-fire-600 transition"
+            >
+              Retry
+            </button>
+          </div>
+        )}
         {!noKey && loading && (
           <div className="flex justify-center items-center h-40">
             <span className="w-8 h-8 border-2 border-fire-500/30 border-t-fire-500 rounded-full animate-spin" />
           </div>
         )}
-        {!noKey && !loading && (
+        {!noKey && !loading && !error && (
           <div className="grid grid-cols-3 gap-2">
             {gifs.map((gif) => (
               <button
@@ -277,7 +301,7 @@ function GifPicker({ visible, onClose, onSelect }) {
 }
 
 // ── Chat Header ───────────────────────────────────────────────────────────────
-function ChatHeader({ code, timeLeft, userCount }) {
+function ChatHeader({ code, timeLeft, userCount, onLeave }) {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = async () => {
@@ -317,10 +341,20 @@ function ChatHeader({ code, timeLeft, userCount }) {
           {formatTime(timeLeft)}
         </span>
       </div>
-      <div className="flex items-center gap-1.5 text-ash-300" style={{ fontSize: '0.8rem' }}>
-        <span className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_4px_rgba(52,199,89,0.8)]" />
-        <UsersIcon size={14} className="text-ash-500" />
-        <span>{userCount}</span>
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 text-ash-300" style={{ fontSize: '0.8rem' }}>
+          <span className="w-2 h-2 rounded-full bg-green-400 shadow-[0_0_4px_rgba(52,199,89,0.8)]" />
+          <UsersIcon size={14} className="text-ash-500" />
+          <span>{userCount}</span>
+        </div>
+        <button
+          type="button"
+          onClick={onLeave}
+          className="btn-ghost text-ash-300 hover:text-fire-500 transition-colors"
+          style={{ height: '32px', borderRadius: '999px', padding: '0 12px', fontSize: '0.75rem' }}
+        >
+          Leave
+        </button>
       </div>
     </header>
   )
@@ -560,6 +594,13 @@ export default function Room() {
     socket.emit('send_message', { room: roomCode, message, type })
   }
 
+  const handleLeave = () => {
+    if (socket && roomCode) {
+      socket.emit('leave_room', { code: roomCode })
+    }
+    navigate('/')
+  }
+
   const handleCreateNew = () => navigate('/')
 
   if (error) {
@@ -578,7 +619,7 @@ export default function Room() {
   return (
     <div className="min-h-dvh flex flex-col" style={{ background: 'transparent' }}>
       {intensified && <EmberBackground intensified />}
-      <ChatHeader code={roomCode} timeLeft={timeLeft} userCount={userCount} />
+      <ChatHeader code={roomCode} timeLeft={timeLeft} userCount={userCount} onLeave={handleLeave} />
       <WarningBanner visible={show5MinBanner} onDismiss={() => setShow5MinBanner(false)} />
       <OneMinuteModal
         visible={show1MinModal && !show1MinDismissed}
