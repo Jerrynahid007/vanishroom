@@ -113,7 +113,6 @@ function socketHandler(io) {
         console.log(`[join_room] requested: ${code} normalized: ${upperCode} socket:${socket.id}`);
 
         const room = await joinRoom(upperCode);
-
         if (!room) {
           console.warn(`[join_room] room not found: ${upperCode}`);
           return callback({
@@ -125,16 +124,16 @@ function socketHandler(io) {
         socket.join(upperCode);
         socket.data.roomCode = upperCode;
 
-        // Notify others in room
+        // Notify others in room (excluding the new socket)
         socket.to(upperCode).emit('user_joined', {
           message: 'Someone joined the room',
         });
 
-        // Count members in room
-        const members = io.sockets.adapter.rooms.get(upperCode);
-        const userCount = members ? members.size : 1;
+        // ✅ Get accurate user count using fetchSockets (works with Redis adapter)
+        const sockets = await io.in(upperCode).fetchSockets();
+        const userCount = sockets.length;
 
-        // Broadcast updated user count to all in room
+        // ✅ Broadcast updated count to everyone in the room (including the new user)
         io.to(upperCode).emit('user_count', { count: userCount });
 
         // Ensure timers are running for this room (handles server restart scenario)
@@ -169,13 +168,11 @@ function socketHandler(io) {
       const isInRoom = socket.rooms.has(upperRoom);
       console.log('[send_message]', { socketId: socket.id, roomRequested: room, upperRoom, isInRoom, type });
 
-      // Validate the socket is actually in this room
       if (!isInRoom) {
         console.warn(`[send_message] sender not in room ${upperRoom}`, { socketId: socket.id, rooms: [...socket.rooms] });
         return;
       }
 
-      // Broadcast to EVERYONE ELSE in the room (never stored)
       socket.to(upperRoom).emit('receive_message', {
         message,
         type,
@@ -185,30 +182,30 @@ function socketHandler(io) {
     });
 
     // ── leave_room ─────────────────────────────────────────────────────────────
-    socket.on('leave_room', ({ code }) => {
+    socket.on('leave_room', async ({ code }) => {
       const upperCode = code.toUpperCase();
       socket.leave(upperCode);
 
-      const members = io.sockets.adapter.rooms.get(upperCode);
-      const userCount = members ? members.size : 0;
+      // ✅ Use fetchSockets for accurate count
+      const sockets = await io.in(upperCode).fetchSockets();
+      const userCount = sockets.length;
 
       io.to(upperCode).emit('user_count', { count: userCount });
       socket.to(upperCode).emit('user_left', { message: 'Someone left the room' });
     });
 
     // ── disconnect ─────────────────────────────────────────────────────────────
-    socket.on('disconnect', () => {
+    socket.on('disconnect', async () => {
       const roomCode = socket.data.roomCode;
       if (roomCode) {
-        // Update user count in all rooms this socket was in
-        const members = io.sockets.adapter.rooms.get(roomCode);
-        const userCount = members ? members.size : 0;
+        // ✅ Use fetchSockets for accurate count
+        const sockets = await io.in(roomCode).fetchSockets();
+        const userCount = sockets.length;
         io.to(roomCode).emit('user_count', { count: userCount });
 
         if (userCount === 0) {
           console.log(`🏚️  Room ${roomCode} is now empty`);
           // Don't delete it — let Redis TTL clean up naturally
-          // (rooms can be rejoined until they expire)
         }
       }
       console.log(`🔌 Socket disconnected: ${socket.id}`);
