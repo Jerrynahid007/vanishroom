@@ -38,7 +38,7 @@ createClient()
     console.log('✅ Redis connected (room data)');
     socketHandler(io);
     const PORT = process.env.PORT || 4000;
-    server.listen(PORT, () => {
+    server.listen(PORT, '127.0.0.1', () => {
       console.log(`🔥 VanishRoom server running on port ${PORT}`);
     });
   })

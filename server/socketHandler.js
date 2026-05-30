@@ -76,6 +76,11 @@ function socketHandler(io) {
 
     console.log(`🔌 Socket connected: ${socket.id} from ${clientIp}`);
 
+    // Error handler
+    socket.on('error', (err) => {
+      console.error(`❌ Socket error (${socket.id}):`, err);
+    });
+
     // ── create_room ────────────────────────────────────────────────────────────
     socket.on('create_room', async (data, callback) => {
       try {
