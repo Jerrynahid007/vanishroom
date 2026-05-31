@@ -23,8 +23,26 @@ function formatTimestamp(ts) {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-// ── Message Bubble ────────────────────────────────────────────────────────────
-function MessageBubble({ msg, isSelf }) {
+// ── Message Bubble with reply support ─────────────────────────────────────────
+function MessageBubble({ msg, isSelf, onReply }) {
+  // Long press / right click handling
+  let pressTimer = null
+
+  const handleContextMenu = (e) => {
+    e.preventDefault()
+    onReply(msg)
+  }
+
+  const handleTouchStart = () => {
+    pressTimer = setTimeout(() => {
+      onReply(msg)
+    }, 500)
+  }
+
+  const handleTouchEnd = () => {
+    if (pressTimer) clearTimeout(pressTimer)
+  }
+
   if (msg.type === 'system') {
     return (
       <div className="flex justify-center my-1 animate-float-up" aria-live="polite">
@@ -38,6 +56,10 @@ function MessageBubble({ msg, isSelf }) {
   return (
     <div
       className={`flex items-end gap-2 mb-3 animate-float-up ${isSelf ? 'flex-row-reverse' : 'flex-row'}`}
+      onContextMenu={handleContextMenu}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
     >
       <span
         className="w-2 h-2 rounded-full flex-shrink-0 mb-1"
@@ -45,6 +67,16 @@ function MessageBubble({ msg, isSelf }) {
         aria-hidden="true"
       />
       <div className={`flex flex-col ${isSelf ? 'items-end' : 'items-start'} max-w-[75%]`}>
+        {/* Quoted message (reply) */}
+        {msg.replyTo && (
+          <div
+            className="mb-1 px-2 py-1 rounded text-xs border-l-2 border-fire-500"
+            style={{ background: isSelf ? 'rgba(255,69,0,0.2)' : 'rgba(255,255,255,0.05)', color: '#aaa' }}
+          >
+            <span className="text-fire-400">↪️ {msg.replyTo.sender}:</span> {msg.replyTo.message}
+          </div>
+        )}
+
         {msg.type === 'gif' ? (
           <div className="relative">
             <img
@@ -300,7 +332,7 @@ function GifPicker({ visible, onClose, onSelect }) {
   )
 }
 
-// ── Chat Header ───────────────────────────────────────────────────────────────
+// ── Chat Header (with Leave button) ───────────────────────────────────────────
 function ChatHeader({ code, timeLeft, userCount, onLeave }) {
   const [copied, setCopied] = useState(false)
 
@@ -360,8 +392,8 @@ function ChatHeader({ code, timeLeft, userCount, onLeave }) {
   )
 }
 
-// ── Input Bar ─────────────────────────────────────────────────────────────────
-function InputBar({ onSend, disabled }) {
+// ── Input Bar with reply preview ──────────────────────────────────────────────
+function InputBar({ onSend, disabled, replyTo, clearReply }) {
   const [text, setText] = useState('')
   const [showEmoji, setShowEmoji] = useState(false)
   const [showGif, setShowGif] = useState(false)
@@ -400,6 +432,22 @@ function InputBar({ onSend, disabled }) {
         </div>
       )}
       <GifPicker visible={showGif} onClose={() => setShowGif(false)} onSelect={handleGifSelect} />
+
+      {/* Reply preview bar */}
+      {replyTo && (
+        <div
+          className="fixed bottom-[60px] left-0 right-0 z-20 flex items-center justify-between px-3 py-2"
+          style={{ background: '#2A2A2A', borderTop: '1px solid #FF4500', marginBottom: '0px' }}
+        >
+          <div className="flex-1 text-xs text-ash-300">
+            <span className="text-fire-500">↪️ Replying to {replyTo.sender}:</span> {replyTo.message}
+          </div>
+          <button onClick={clearReply} className="text-ash-500 hover:text-fire-500">
+            <CloseIcon size={14} />
+          </button>
+        </div>
+      )}
+
       <div className="fixed bottom-0 left-0 right-0 z-20 flex items-center gap-2 px-3 safe-bottom" style={{ height: '60px', background: 'rgba(26,26,26,0.97)', backdropFilter: 'blur(12px)', borderTop: '1px solid #2A2A2A' }}>
         <button onClick={() => { setShowEmoji((v) => !v); setShowGif(false) }} className="text-ash-400 hover:text-fire-500 transition-colors rounded-lg p-1.5 hover:bg-white/5" style={{ minWidth: '40px', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <SmileIcon size={22} />
@@ -446,7 +494,6 @@ export default function Room() {
   const navigate = useNavigate()
   const { socket } = useSocket()
 
-  // Normalize room code to uppercase once
   const roomCode = useMemo(() => String(code || '').toUpperCase().trim(), [code])
 
   const [messages, setMessages] = useState([])
@@ -455,6 +502,7 @@ export default function Room() {
   const [joined, setJoined] = useState(false)
   const [error, setError] = useState('')
   const [hasJoinedOnce, setHasJoinedOnce] = useState(false)
+  const [replyTo, setReplyTo] = useState(null)   // { message, sender, timestamp }
 
   const [show5MinBanner, setShow5MinBanner] = useState(false)
   const [show1MinModal, setShow1MinModal] = useState(false)
@@ -466,7 +514,6 @@ export default function Room() {
   const timerRef = useRef(null)
   const socketIdRef = useRef(null)
 
-  // Helper functions defined before they are used
   const addMessage = (msg) => {
     setMessages((prev) => [...prev, { ...msg, id: `${Date.now()}-${Math.random()}` }])
   }
@@ -475,12 +522,10 @@ export default function Room() {
     addMessage({ message: text, type: 'system', timestamp: Date.now(), isSelf: false })
   }
 
-  // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Countdown timer
   useEffect(() => {
     if (!joined || expired) return
     timerRef.current = setInterval(() => {
@@ -489,6 +534,7 @@ export default function Room() {
     return () => clearInterval(timerRef.current)
   }, [joined, expired])
 
+  // Join room logic (with reconnect)
   useEffect(() => {
     if (!socket || !roomCode) return
 
@@ -497,7 +543,6 @@ export default function Room() {
 
     const joinRoom = () => {
       if (!socket || !roomCode) return
-
       console.debug('[Room] emit join_room', { roomCode, socketId: socket.id })
       socket.emit('join_room', { code: roomCode }, (res) => {
         if (res.success) {
@@ -538,12 +583,12 @@ export default function Room() {
     }
   }, [socket, roomCode, location.state])
 
-  // Socket event listeners
+  // Socket event listeners (receive messages)
   useEffect(() => {
     if (!socket) return
 
-    const onReceive = ({ message, type, timestamp }) => {
-      addMessage({ message, type, timestamp, isSelf: false })
+    const onReceive = ({ message, type, timestamp, replyTo: incomingReply }) => {
+      addMessage({ message, type, timestamp, isSelf: false, replyTo: incomingReply })
     }
 
     const onUserJoined = ({ message }) => addSystemMessage(message)
@@ -578,7 +623,6 @@ export default function Room() {
     }
   }, [socket, show1MinDismissed])
 
-  // Client-side expiry guard
   useEffect(() => {
     if (timeLeft <= 0 && joined && !expired) {
       setExpired(true)
@@ -589,9 +633,16 @@ export default function Room() {
   const handleSend = (message, type) => {
     if (!socket || !joined || expired) return
     const timestamp = Date.now()
-    addMessage({ message, type, timestamp, isSelf: true })
-    console.debug('[Room] send_message', { room: roomCode, message, type, socketId: socket.id })
-    socket.emit('send_message', { room: roomCode, message, type })
+    const replyData = replyTo ? {
+      replyTo: {
+        message: replyTo.message,
+        sender: replyTo.sender,
+        timestamp: replyTo.timestamp,
+      }
+    } : {}
+    addMessage({ message, type, timestamp, isSelf: true, replyTo: replyData.replyTo })
+    socket.emit('send_message', { room: roomCode, message, type, ...replyData })
+    setReplyTo(null) // clear reply after sending
   }
 
   const handleLeave = () => {
@@ -644,11 +695,25 @@ export default function Room() {
           </div>
         )}
         {messages.map((msg) => (
-          <MessageBubble key={msg.id} msg={msg} isSelf={msg.isSelf} />
+          <MessageBubble
+            key={msg.id}
+            msg={msg}
+            isSelf={msg.isSelf}
+            onReply={() => setReplyTo({
+              message: msg.message,
+              sender: msg.isSelf ? 'You' : 'User',
+              timestamp: msg.timestamp,
+            })}
+          />
         ))}
         <div ref={messagesEndRef} />
       </main>
-      <InputBar onSend={handleSend} disabled={expired || !joined} />
+      <InputBar
+        onSend={handleSend}
+        disabled={expired || !joined}
+        replyTo={replyTo}
+        clearReply={() => setReplyTo(null)}
+      />
     </div>
   )
 }
