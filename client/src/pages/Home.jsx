@@ -213,6 +213,9 @@ export default function Home() {
         setRoomCode(res.code)
         setCreatedAt(res.createdAt)
         setShowCreate(true)
+      } else {
+        console.error('Create room failed:', res.error)
+        alert('Failed to create room: ' + (res.error || 'Unknown error'))
       }
     })
   }

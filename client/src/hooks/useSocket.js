@@ -6,6 +6,8 @@ const SERVER_URL = (import.meta.env.VITE_SERVER_URL || 'http://localhost:4000').
 let sharedSocket = null
 let refCount = 0
 
+console.log('[useSocket] SERVER_URL:', SERVER_URL)
+
 /**
  * Returns a shared Socket.IO connection.
  * The connection is created once and reused across components.
@@ -17,6 +19,7 @@ export function useSocket() {
 
   useEffect(() => {
     if (!sharedSocket) {
+      console.log('[useSocket] Creating new socket connection')
       sharedSocket = io(SERVER_URL, {
         transports: ['websocket', 'polling'],
         reconnection: true,
@@ -25,25 +28,47 @@ export function useSocket() {
         reconnectionDelayMax: 5000,
         autoConnect: true,
       })
+
+      sharedSocket.on('connect', () => {
+        console.log('[useSocket] Socket connected:', sharedSocket.id)
+        setConnected(true)
+      })
+      
+      sharedSocket.on('disconnect', (reason) => {
+        console.log('[useSocket] Socket disconnected:', reason)
+        setConnected(false)
+      })
+
+      sharedSocket.on('connect_error', (error) => {
+        console.error('[useSocket] Connection error:', error.message)
+      })
     }
 
     refCount += 1
+    console.log('[useSocket] refCount++:', refCount)
     socketRef.current = sharedSocket
 
-    const onConnect = () => setConnected(true)
-    const onDisconnect = () => setConnected(false)
+    const onConnect = () => {
+      console.log('[useSocket] onConnect callback')
+      setConnected(true)
+    }
+    const onDisconnect = () => {
+      console.log('[useSocket] onDisconnect callback')
+      setConnected(false)
+    }
 
-    sharedSocket.on('connect', onConnect)
-    sharedSocket.on('disconnect', onDisconnect)
-
-    if (sharedSocket.connected) setConnected(true)
+    // Check if already connected
+    if (sharedSocket.connected) {
+      console.log('[useSocket] Socket already connected')
+      setConnected(true)
+    }
 
     return () => {
-      sharedSocket.off('connect', onConnect)
-      sharedSocket.off('disconnect', onDisconnect)
-
+      console.log('[useSocket] Cleanup: refCount--')
       refCount -= 1
+      console.log('[useSocket] New refCount:', refCount)
       if (refCount === 0) {
+        console.log('[useSocket] Disconnecting socket')
         sharedSocket.disconnect()
         sharedSocket = null
       }
