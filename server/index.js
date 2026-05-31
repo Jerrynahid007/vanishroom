@@ -32,13 +32,14 @@ const io = new Server(server, {
   pingInterval: 25000,
 });
 
-// Connect Redis only for room data (no Socket.IO adapter)
+// Connect Redis only for room data
 createClient()
   .then(() => {
     console.log('✅ Redis connected (room data)');
     socketHandler(io);
     const PORT = process.env.PORT || 4000;
-    server.listen(PORT, '127.0.0.1', () => {
+    // ✅ CRITICAL: Bind to 0.0.0.0 for Render
+    server.listen(PORT, '0.0.0.0', () => {
       console.log(`🔥 VanishRoom server running on port ${PORT}`);
     });
   })
