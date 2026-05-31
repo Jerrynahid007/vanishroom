@@ -3,20 +3,13 @@ const Redis = require('ioredis');
 
 const ROOM_TTL = 2400; // 40 minutes in seconds
 const ROOM_PREFIX = 'vanishroom:';
-// We'll store the client in a variable but it's a singleton by design
 let redis = null;
 
-/**
- * Initialise and return the Redis client.
- * Called once at server startup.
- */
 async function createClient() {
-  // Create Redis client from connection URL
   if (!redis) {
     redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
     console.log('✅ Redis client ready');
   }
-  // Test connection
   try {
     await redis.ping();
     console.log('✅ Redis connection verified');
@@ -27,7 +20,6 @@ async function createClient() {
   return redis;
 }
 
-// The rest of the functions remain the same, as the API is similar to ioredis
 function generateRoomCode() {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   let code = '';
@@ -46,7 +38,8 @@ async function createRoom() {
     if (attempts > 20) throw new Error('Could not generate unique room code');
   } while (await redis.exists(ROOM_PREFIX + code));
   const createdAt = Date.now();
-  await redis.setex(ROOM_PREFIX + code, ROOM_TTL, JSON.stringify({ createdAt, code }));
+  const roomData = { createdAt, code, locked: false, ownerSocketId: null };
+  await redis.setex(ROOM_PREFIX + code, ROOM_TTL, JSON.stringify(roomData));
   return { code, createdAt };
 }
 
@@ -68,10 +61,46 @@ async function incrementRateLimit(ip) {
   const key = `ratelimit:${ip}:${new Date().toDateString()}`;
   const count = await redis.incr(key);
   if (count === 1) {
-    // Set 24-hour TTL after creating the key
     await redis.expire(key, 86400);
   }
   return count;
+}
+
+// New functions for owner/lock
+async function setRoomLock(code, locked) {
+  const key = ROOM_PREFIX + code;
+  const raw = await redis.get(key);
+  if (!raw) return false;
+  const room = JSON.parse(raw);
+  room.locked = locked;
+  await redis.setex(key, ROOM_TTL, JSON.stringify(room));
+  return true;
+}
+
+async function getRoomLock(code) {
+  const key = ROOM_PREFIX + code;
+  const raw = await redis.get(key);
+  if (!raw) return false;
+  const room = JSON.parse(raw);
+  return room.locked === true;
+}
+
+async function setRoomOwner(code, ownerSocketId) {
+  const key = ROOM_PREFIX + code;
+  const raw = await redis.get(key);
+  if (!raw) return false;
+  const room = JSON.parse(raw);
+  room.ownerSocketId = ownerSocketId;
+  await redis.setex(key, ROOM_TTL, JSON.stringify(room));
+  return true;
+}
+
+async function getRoomOwner(code) {
+  const key = ROOM_PREFIX + code;
+  const raw = await redis.get(key);
+  if (!raw) return null;
+  const room = JSON.parse(raw);
+  return room.ownerSocketId || null;
 }
 
 module.exports = {
@@ -81,4 +110,8 @@ module.exports = {
   deleteRoom,
   getRoomTimeLeft,
   incrementRateLimit,
+  setRoomLock,
+  getRoomLock,
+  setRoomOwner,
+  getRoomOwner,
 };
