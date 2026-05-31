@@ -23,3 +23,8 @@ logs/
 # OS
 .vscode/
 .idea/
+
+#.env files
+.env
+client/.env
+server/.env
