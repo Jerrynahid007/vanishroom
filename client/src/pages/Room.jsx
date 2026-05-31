@@ -79,9 +79,222 @@ function MessageBubble({ msg, isSelf, onReply }) {
   )
 }
 
-// ── Warning Banner, OneMinuteModal, ExpiredOverlay, GifPicker (unchanged) ─────
-// (Keep these exactly as they were in your previous working file – omitted for brevity)
-// ... WarningBanner, OneMinuteModal, ExpiredOverlay, GifPicker ...
+// ── 5-Min Warning Banner ──────────────────────────────────────────────────────
+function WarningBanner({ visible, onDismiss }) {
+  const [opacity, setOpacity] = useState(1)
+
+  useEffect(() => {
+    if (!visible) return
+    setOpacity(1)
+    const timer = setTimeout(() => {
+      setOpacity(0)
+      setTimeout(onDismiss, 500)
+    }, 10000)
+    return () => clearTimeout(timer)
+  }, [visible, onDismiss])
+
+  if (!visible) return null
+
+  return (
+    <div
+      className="fixed left-0 right-0 z-30 flex items-center justify-between px-4 animate-slide-down"
+      style={{
+        top: '56px',
+        height: '44px',
+        background: 'rgba(204,55,0,0.95)',
+        opacity,
+        transition: 'opacity 0.5s ease',
+      }}
+      role="alert"
+    >
+      <div className="flex items-center gap-2 text-white font-medium" style={{ fontSize: '0.85rem' }}>
+        <FlameIcon size={16} />
+        Room expires in 5 minutes. Create a new room to continue.
+      </div>
+      <button onClick={onDismiss} className="text-white hover:scale-125 transition-transform p-1" aria-label="Dismiss warning">
+        <CloseIcon size={14} />
+      </button>
+    </div>
+  )
+}
+
+// ── 1-Min Warning Modal ───────────────────────────────────────────────────────
+function OneMinuteModal({ visible, onCreateNew, onStay }) {
+  return (
+    <Modal isOpen={visible} preventClose>
+      <div className="p-6 w-[300px]" style={{ background: '#1A1A1A', border: '1px solid #FF4500', borderRadius: '20px' }}>
+        <div className="flex justify-center mb-4">
+          <HourglassIcon size={48} className="text-red-500 animate-spin-slow" />
+        </div>
+        <h2 className="text-xl font-bold text-red-400 text-center mb-2">1 Minute Left</h2>
+        <p className="text-ash-300 text-center mb-6" style={{ fontSize: '0.85rem' }}>
+          This room will self-destruct. Save anything important now.
+        </p>
+        <button onClick={onCreateNew} className="btn-fire w-full mb-2" style={{ height: '44px', borderRadius: '12px' }}>
+          Create New Room
+        </button>
+        <button onClick={onStay} className="btn-ghost w-full" style={{ height: '44px', borderRadius: '12px' }}>
+          Stay
+        </button>
+      </div>
+    </Modal>
+  )
+}
+
+// ── Expired Overlay ───────────────────────────────────────────────────────────
+function ExpiredOverlay({ visible, onCreateNew }) {
+  const navigate = useNavigate()
+  const [countdown, setCountdown] = useState(5)
+
+  useEffect(() => {
+    if (!visible) return
+    const interval = setInterval(() => {
+      setCountdown((c) => {
+        if (c <= 1) {
+          clearInterval(interval)
+          navigate('/')
+          return 0
+        }
+        return c - 1
+      })
+    }, 1000)
+    return () => clearInterval(interval)
+  }, [visible, navigate])
+
+  if (!visible) return null
+
+  return (
+    <div className="fixed inset-0 flex flex-col items-center justify-center z-50 animate-fade-in" style={{ background: 'rgba(0,0,0,0.92)' }}>
+      <span className="text-6xl mb-6 animate-ember-in" role="img" aria-label="Fire">🔥</span>
+      <h2 className="text-ash-300 font-semibold mb-3 text-center" style={{ fontSize: '1.5rem' }}>
+        This room has burned out.
+      </h2>
+      <p className="text-ash-500 mb-8 text-center" style={{ fontSize: '0.95rem' }}>
+        Redirecting in {countdown}…
+      </p>
+      <button onClick={onCreateNew} className="btn-fire" style={{ borderRadius: '12px', padding: '12px 32px' }}>
+        Create New Room
+      </button>
+    </div>
+  )
+}
+
+// ── GIF Picker Overlay ────────────────────────────────────────────────────────
+function GifPicker({ visible, onClose, onSelect }) {
+  const [query, setQuery] = useState('')
+  const [gifs, setGifs] = useState([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const inputRef = useRef(null)
+
+  const GIPHY_KEY = import.meta.env.VITE_GIPHY_KEY || ''
+
+  const search = useCallback(async (q) => {
+    if (!GIPHY_KEY) return
+    setLoading(true)
+    setError('')
+    try {
+      const endpoint = q.trim()
+        ? `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(q)}&limit=18&rating=g`
+        : `https://api.giphy.com/v1/gifs/trending?api_key=${GIPHY_KEY}&limit=18&rating=g`
+      console.log('[GIF Search] Fetching:', endpoint)
+      const res = await fetch(endpoint)
+      if (!res.ok) {
+        throw new Error(`GIPHY API error: ${res.status} ${res.statusText}`)
+      }
+      const json = await res.json()
+      console.log('[GIF Search] Response:', { dataLength: json.data?.length, meta: json.meta })
+      if (json.meta?.status !== 200) {
+        throw new Error(`GIPHY error: ${json.meta?.msg || 'Unknown error'}`)
+      }
+      setGifs(json.data || [])
+    } catch (err) {
+      console.error('[GIF Search] Error:', err.message)
+      setError(err.message)
+      setGifs([])
+    } finally {
+      setLoading(false)
+    }
+  }, [GIPHY_KEY])
+
+  useEffect(() => {
+    if (visible) {
+      search('')
+      setTimeout(() => inputRef.current?.focus(), 100)
+    }
+  }, [visible, search])
+
+  useEffect(() => {
+    const t = setTimeout(() => search(query), 400)
+    return () => clearTimeout(t)
+  }, [query, search])
+
+  if (!visible) return null
+
+  const noKey = !GIPHY_KEY
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col animate-fade-in" style={{ background: 'rgba(11,11,11,0.97)' }}>
+      <div className="flex items-center gap-3 p-4 border-b border-ash-700">
+        <button onClick={onClose} className="text-ash-400 hover:text-ash-100 transition-colors">
+          <CloseIcon size={20} />
+        </button>
+        <input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search GIFs…"
+          className="input-dark flex-1"
+          style={{ height: '40px' }}
+          disabled={noKey}
+        />
+        <span className="text-ash-500 text-xs">Powered by GIPHY</span>
+      </div>
+      <div className="flex-1 overflow-y-auto p-3">
+        {noKey && (
+          <div className="flex flex-col items-center justify-center h-full text-ash-500 text-sm text-center gap-2">
+            <span className="text-3xl">🔑</span>
+            <p>Add <code className="text-fire-500">VITE_GIPHY_KEY</code> to <code>.env</code> to enable GIFs.</p>
+          </div>
+        )}
+        {!noKey && error && (
+          <div className="flex flex-col items-center justify-center h-full text-red-400 text-sm text-center gap-2">
+            <span className="text-3xl">⚠️</span>
+            <p>{error}</p>
+            <button
+              onClick={() => { setError(''); search(query) }}
+              className="mt-2 px-3 py-1 rounded bg-fire-500 text-white text-xs hover:bg-fire-600 transition"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {!noKey && loading && (
+          <div className="flex justify-center items-center h-40">
+            <span className="w-8 h-8 border-2 border-fire-500/30 border-t-fire-500 rounded-full animate-spin" />
+          </div>
+        )}
+        {!noKey && !loading && !error && (
+          <div className="grid grid-cols-3 gap-2">
+            {gifs.map((gif) => (
+              <button
+                key={gif.id}
+                onClick={() => { onSelect(gif.images.fixed_height.url); onClose() }}
+                className="rounded-xl overflow-hidden hover:ring-2 hover:ring-fire-500 transition-all aspect-video"
+              >
+                <img src={gif.images.fixed_height_small.url} alt={gif.title} className="w-full h-full object-cover" loading="lazy" />
+              </button>
+            ))}
+            {gifs.length === 0 && (
+              <p className="col-span-3 text-center text-ash-500 text-sm py-12">No GIFs found.</p>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 // ── Chat Header with owner controls ───────────────────────────────────────────
 function ChatHeader({ code, timeLeft, userCount, onLeave, isOwner, locked, onLockToggle, onManageUsers }) {
@@ -124,7 +337,7 @@ function ChatHeader({ code, timeLeft, userCount, onLeave, isOwner, locked, onLoc
   )
 }
 
-// ── Input Bar with reply preview (unchanged) ─────────────────────────────────
+// ── Input Bar with reply preview ──────────────────────────────────────────────
 function InputBar({ onSend, disabled, replyTo, clearReply }) {
   const [text, setText] = useState('')
   const [showEmoji, setShowEmoji] = useState(false)
