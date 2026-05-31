@@ -81,6 +81,13 @@ function socketHandler(io) {
       console.error(`❌ Socket error (${socket.id}):`, err);
     });
 
+    // ── Heartbeat to keep connection alive (respond to client pings) ──────────
+    socket.on('ping', () => {
+      // Optional: send a 'pong' back if needed, but just receiving the ping
+      // keeps the socket active on the server side.
+      // console.log(`[socket ${socket.id}] Heartbeat received`);
+    });
+
     // ── create_room ────────────────────────────────────────────────────────────
     socket.on('create_room', async (data, callback) => {
       try {

@@ -5,21 +5,15 @@ const SERVER_URL = (import.meta.env.VITE_SERVER_URL || 'http://localhost:4000').
 
 let sharedSocket = null
 let refCount = 0
+let heartbeatInterval = null
 
-console.log('[useSocket] SERVER_URL:', SERVER_URL)
-
-/**
- * Returns a shared Socket.IO connection.
- * The connection is created once and reused across components.
- * Disconnects when the last consumer unmounts.
- */
 export function useSocket() {
   const [connected, setConnected] = useState(false)
   const socketRef = useRef(null)
 
   useEffect(() => {
     if (!sharedSocket) {
-      console.log('[useSocket] Creating new socket connection')
+      console.log('[useSocket] Creating new socket connection to', SERVER_URL)
       sharedSocket = io(SERVER_URL, {
         transports: ['websocket', 'polling'],
         reconnection: true,
@@ -29,14 +23,23 @@ export function useSocket() {
         autoConnect: true,
       })
 
+      // Heartbeat: send 'ping' every 25 seconds to keep connection alive
       sharedSocket.on('connect', () => {
-        console.log('[useSocket] Socket connected:', sharedSocket.id)
-        setConnected(true)
+        console.log('[useSocket] Socket connected, starting heartbeat')
+        if (heartbeatInterval) clearInterval(heartbeatInterval)
+        heartbeatInterval = setInterval(() => {
+          if (sharedSocket && sharedSocket.connected) {
+            sharedSocket.emit('ping')
+          }
+        }, 25000)
       })
-      
+
       sharedSocket.on('disconnect', (reason) => {
         console.log('[useSocket] Socket disconnected:', reason)
-        setConnected(false)
+        if (heartbeatInterval) {
+          clearInterval(heartbeatInterval)
+          heartbeatInterval = null
+        }
       })
 
       sharedSocket.on('connect_error', (error) => {
@@ -45,30 +48,23 @@ export function useSocket() {
     }
 
     refCount += 1
-    console.log('[useSocket] refCount++:', refCount)
     socketRef.current = sharedSocket
 
-    const onConnect = () => {
-      console.log('[useSocket] onConnect callback')
-      setConnected(true)
-    }
-    const onDisconnect = () => {
-      console.log('[useSocket] onDisconnect callback')
-      setConnected(false)
-    }
+    const onConnect = () => setConnected(true)
+    const onDisconnect = () => setConnected(false)
 
-    // Check if already connected
-    if (sharedSocket.connected) {
-      console.log('[useSocket] Socket already connected')
-      setConnected(true)
-    }
+    sharedSocket.on('connect', onConnect)
+    sharedSocket.on('disconnect', onDisconnect)
+
+    if (sharedSocket.connected) setConnected(true)
 
     return () => {
-      console.log('[useSocket] Cleanup: refCount--')
+      sharedSocket.off('connect', onConnect)
+      sharedSocket.off('disconnect', onDisconnect)
       refCount -= 1
-      console.log('[useSocket] New refCount:', refCount)
       if (refCount === 0) {
-        console.log('[useSocket] Disconnecting socket')
+        if (heartbeatInterval) clearInterval(heartbeatInterval)
+        heartbeatInterval = null
         sharedSocket.disconnect()
         sharedSocket = null
       }
