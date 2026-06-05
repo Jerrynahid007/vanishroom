@@ -362,10 +362,10 @@ function InputBar({ onSend, disabled, replyTo, clearReply }) {
           <button onClick={clearReply} className="text-ash-500 hover:text-fire-500"><CloseIcon size={14} /></button>
         </div>
       )}
-      <div className="fixed bottom-0 left-0 right-0 z-20 flex items-center gap-2 px-3 safe-bottom" style={{ height: '60px', background: 'rgba(26,26,26,0.97)', backdropFilter: 'blur(12px)', borderTop: '1px solid #2A2A2A' }}>
+      <div className="sticky bottom-0 left-0 right-0 z-20 flex items-center gap-2 px-3 safe-bottom" style={{ minHeight: '60px', background: 'rgba(26,26,26,0.97)', backdropFilter: 'blur(12px)', borderTop: '1px solid #2A2A2A' }}>
         <button onClick={() => { setShowEmoji(v => !v); setShowGif(false) }} className="text-ash-400 hover:text-fire-500 transition-colors rounded-lg p-1.5 hover:bg-white/5" style={{ minWidth: '40px', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><SmileIcon size={22} /></button>
         <button onClick={() => { setShowGif(v => !v); setShowEmoji(false) }} className="text-ash-400 hover:text-fire-500 border border-ash-600 hover:border-fire-500 transition-all rounded-full px-3 font-bold" style={{ fontSize: '0.75rem', height: '32px', letterSpacing: '0.05em' }}>GIF</button>
-        <input ref={inputRef} type="text" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={handleKeyDown} onFocus={() => setShowEmoji(false)} placeholder="Type a message…" disabled={disabled} className="flex-1 text-white placeholder-ash-500 bg-ash-700 border-none outline-none px-4 disabled:opacity-50" style={{ height: '44px', borderRadius: '22px', fontSize: '0.95rem' }} autoComplete="off" />
+        <input ref={inputRef} type="text" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={handleKeyDown} onFocus={() => { setShowEmoji(false); setShowGif(false); setTimeout(() => inputRef.current?.scrollIntoView({ block: 'nearest' }), 100) }} placeholder="Type a message…" disabled={disabled} className="flex-1 text-white placeholder-ash-500 bg-ash-700 border-none outline-none px-4 disabled:opacity-50" style={{ height: '44px', borderRadius: '22px', fontSize: '0.95rem' }} autoComplete="off" />
         <button onClick={handleSend} disabled={!hasText || disabled} className="flex items-center justify-center flex-shrink-0 transition-all duration-200 disabled:cursor-not-allowed" style={{ width: '44px', height: '44px', borderRadius: '50%', background: hasText && !disabled ? 'linear-gradient(135deg, #FF4500, #FF8C00)' : '#3A3A3A', boxShadow: hasText && !disabled ? '0 0 10px rgba(255,69,0,0.3)' : 'none' }}>
           <SendIcon size={16} className="text-white" />
         </button>
@@ -541,7 +541,7 @@ export default function Room() {
   }
 
   return (
-    <div className="min-h-dvh flex flex-col" style={{ background: 'transparent' }}>
+    <div className="min-h-[100dvh] flex flex-col" style={{ background: 'transparent' }}>
       {intensified && <EmberBackground intensified />}
       <ChatHeader code={roomCode} timeLeft={timeLeft} userCount={userCount} onLeave={handleLeave} isOwner={isOwner} locked={locked} onLockToggle={handleLockToggle} onManageUsers={() => setShowUserModal(true)} />
       <WarningBanner visible={show5MinBanner} onDismiss={() => setShow5MinBanner(false)} />
