@@ -338,7 +338,7 @@ function ChatHeader({ code, timeLeft, userCount, onLeave, isOwner, locked, onLoc
 }
 
 // ── Input Bar with reply preview ──────────────────────────────────────────────
-function InputBar({ onSend, disabled, replyTo, clearReply }) {
+function InputBar({ onSend, disabled, replyTo, clearReply, keyboardSpace }) {
   const [text, setText] = useState('')
   const [showEmoji, setShowEmoji] = useState(false)
   const [showGif, setShowGif] = useState(false)
@@ -347,25 +347,26 @@ function InputBar({ onSend, disabled, replyTo, clearReply }) {
 
   const handleSend = () => { if (!hasText || disabled) return; onSend(text.trim(), 'text'); setText(''); inputRef.current?.focus() }
   const handleKeyDown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() } }
+  const handleFocus = () => { setShowEmoji(false); setShowGif(false); setTimeout(() => inputRef.current?.scrollIntoView({ block: 'end', inline: 'nearest', behavior: 'smooth' }), 100) }
   const handleEmojiSelect = (emoji) => { onSend(emoji.native, 'emoji'); setShowEmoji(false) }
   const handleGifSelect = (url) => { onSend(url, 'gif') }
 
   return (
     <>
-      {showEmoji && <div className="fixed bottom-[60px] left-0 right-0 z-30 animate-slide-up" style={{ maxWidth: '420px', margin: '0 auto', padding: '0 12px 8px' }}>
+      {showEmoji && <div className="fixed left-0 right-0 z-30 animate-slide-up" style={{ bottom: `${60 + keyboardSpace}px`, maxWidth: '420px', margin: '0 auto', padding: '0 12px 8px' }}>
         <Picker data={data} onEmojiSelect={handleEmojiSelect} theme="dark" previewPosition="none" skinTonePosition="none" />
       </div>}
       <GifPicker visible={showGif} onClose={() => setShowGif(false)} onSelect={handleGifSelect} />
       {replyTo && (
-        <div className="fixed bottom-[60px] left-0 right-0 z-20 flex items-center justify-between px-3 py-2" style={{ background: '#2A2A2A', borderTop: '1px solid #FF4500' }}>
+        <div className="fixed left-0 right-0 z-20 flex items-center justify-between px-3 py-2" style={{ bottom: `${60 + keyboardSpace}px`, background: '#2A2A2A', borderTop: '1px solid #FF4500' }}>
           <div className="flex-1 text-xs text-ash-300"><span className="text-fire-500">↪️ Replying to {replyTo.sender}:</span> {replyTo.message}</div>
           <button onClick={clearReply} className="text-ash-500 hover:text-fire-500"><CloseIcon size={14} /></button>
         </div>
       )}
-      <div className="sticky bottom-0 left-0 right-0 z-20 flex items-center gap-2 px-3 safe-bottom" style={{ minHeight: '60px', background: 'rgba(26,26,26,0.97)', backdropFilter: 'blur(12px)', borderTop: '1px solid #2A2A2A' }}>
+      <div className="fixed left-0 right-0 z-20 flex items-center gap-2 px-3 safe-bottom" style={{ bottom: `${keyboardSpace}px`, minHeight: '60px', background: 'rgba(26,26,26,0.97)', backdropFilter: 'blur(12px)', borderTop: '1px solid #2A2A2A' }}>
         <button onClick={() => { setShowEmoji(v => !v); setShowGif(false) }} className="text-ash-400 hover:text-fire-500 transition-colors rounded-lg p-1.5 hover:bg-white/5" style={{ minWidth: '40px', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><SmileIcon size={22} /></button>
         <button onClick={() => { setShowGif(v => !v); setShowEmoji(false) }} className="text-ash-400 hover:text-fire-500 border border-ash-600 hover:border-fire-500 transition-all rounded-full px-3 font-bold" style={{ fontSize: '0.75rem', height: '32px', letterSpacing: '0.05em' }}>GIF</button>
-        <input ref={inputRef} type="text" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={handleKeyDown} onFocus={() => { setShowEmoji(false); setShowGif(false); setTimeout(() => inputRef.current?.scrollIntoView({ block: 'nearest' }), 100) }} placeholder="Type a message…" disabled={disabled} className="flex-1 text-white placeholder-ash-500 bg-ash-700 border-none outline-none px-4 disabled:opacity-50" style={{ height: '44px', borderRadius: '22px', fontSize: '0.95rem' }} autoComplete="off" />
+        <input ref={inputRef} type="text" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={handleKeyDown} onFocus={handleFocus} placeholder="Type a message…" disabled={disabled} className="flex-1 text-white placeholder-ash-500 bg-ash-700 border-none outline-none px-4 disabled:opacity-50" style={{ height: '44px', borderRadius: '22px', fontSize: '0.95rem' }} autoComplete="off" />
         <button onClick={handleSend} disabled={!hasText || disabled} className="flex items-center justify-center flex-shrink-0 transition-all duration-200 disabled:cursor-not-allowed" style={{ width: '44px', height: '44px', borderRadius: '50%', background: hasText && !disabled ? 'linear-gradient(135deg, #FF4500, #FF8C00)' : '#3A3A3A', boxShadow: hasText && !disabled ? '0 0 10px rgba(255,69,0,0.3)' : 'none' }}>
           <SendIcon size={16} className="text-white" />
         </button>
@@ -424,6 +425,7 @@ export default function Room() {
   const [show1MinDismissed, setShow1MinDismissed] = useState(false)
   const [expired, setExpired] = useState(false)
   const [intensified, setIntensified] = useState(false)
+  const [keyboardSpace, setKeyboardSpace] = useState(0)
 
   const messagesEndRef = useRef(null)
   const timerRef = useRef(null)
@@ -431,7 +433,40 @@ export default function Room() {
   const addMessage = (msg) => setMessages(prev => [...prev, { ...msg, id: `${Date.now()}-${Math.random()}` }])
   const addSystemMessage = (text) => addMessage({ message: text, type: 'system', timestamp: Date.now(), isSelf: false })
 
-  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    }, 50)
+    return () => clearTimeout(timer)
+  }, [messages])
+
+  useEffect(() => {
+    const updateKeyboardSpace = () => {
+      const vv = window.visualViewport
+      if (!vv) {
+        setKeyboardSpace(0)
+        return
+      }
+      const bottomGap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
+      setKeyboardSpace(bottomGap)
+    }
+
+    updateKeyboardSpace()
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', updateKeyboardSpace)
+      window.visualViewport.addEventListener('scroll', updateKeyboardSpace)
+    }
+    window.addEventListener('resize', updateKeyboardSpace)
+
+    return () => {
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', updateKeyboardSpace)
+        window.visualViewport.removeEventListener('scroll', updateKeyboardSpace)
+      }
+      window.removeEventListener('resize', updateKeyboardSpace)
+    }
+  }, [])
+
   useEffect(() => {
     if (!joined || expired) return
     timerRef.current = setInterval(() => setTimeLeft(t => Math.max(0, t - 1)), 1000)
@@ -522,6 +557,9 @@ export default function Room() {
     addMessage({ message, type, timestamp, isSelf: true, replyTo: replyData.replyTo })
     socket.emit('send_message', { room: roomCode, message, type, ...replyData })
     setReplyTo(null)
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    }, 50)
   }
 
   const handleLeave = () => { if (socket && roomCode) socket.emit('leave_room', { code: roomCode }); navigate('/') }
@@ -547,7 +585,7 @@ export default function Room() {
       <WarningBanner visible={show5MinBanner} onDismiss={() => setShow5MinBanner(false)} />
       <OneMinuteModal visible={show1MinModal && !show1MinDismissed} onCreateNew={handleCreateNew} onStay={() => { setShow1MinModal(false); setShow1MinDismissed(true) }} />
       <ExpiredOverlay visible={expired} onCreateNew={handleCreateNew} />
-      <main className="flex-1 overflow-y-auto px-4 pt-4" style={{ marginTop: '56px', marginBottom: '60px', paddingTop: show5MinBanner ? '60px' : '16px', transition: 'padding-top 0.3s ease' }}>
+      <main className="flex-1 overflow-y-auto px-4 pt-4" style={{ marginTop: '56px', marginBottom: 60 + keyboardSpace, paddingTop: show5MinBanner ? '60px' : '16px', transition: 'padding-top 0.3s ease' }}>
         {messages.length === 0 && joined && (
           <div className="flex flex-col items-center justify-center h-full py-20 text-ash-600 text-sm animate-fade-in">
             <FlameIcon size={32} className="text-fire-700 mb-3" />
@@ -558,7 +596,7 @@ export default function Room() {
         {messages.map(msg => <MessageBubble key={msg.id} msg={msg} isSelf={msg.isSelf} onReply={() => setReplyTo({ message: msg.message, sender: msg.isSelf ? 'You' : 'User', timestamp: msg.timestamp })} />)}
         <div ref={messagesEndRef} />
       </main>
-      <InputBar onSend={handleSend} disabled={expired || !joined} replyTo={replyTo} clearReply={() => setReplyTo(null)} />
+      <InputBar onSend={handleSend} disabled={expired || !joined} replyTo={replyTo} clearReply={() => setReplyTo(null)} keyboardSpace={keyboardSpace} />
       <UserManageModal visible={showUserModal} onClose={() => setShowUserModal(false)} usersList={usersList} mySocketId={mySocketIdRef.current} onKick={handleKickUser} />
     </div>
   )
