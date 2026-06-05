@@ -3,6 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom'
 import Picker from '@emoji-mart/react'
 import data from '@emoji-mart/data'
 import { useSocket } from '../hooks/useSocket'
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight'
 import EmberBackground from '../components/EmberBackground'
 import Modal from '../components/Modal'
 import {
@@ -180,7 +181,7 @@ function ExpiredOverlay({ visible, onCreateNew }) {
 }
 
 // ── GIF Picker Overlay ────────────────────────────────────────────────────────
-function GifPicker({ visible, onClose, onSelect }) {
+function GifPicker({ visible, onClose, onSelect, keyboardHeight }) {
   const [query, setQuery] = useState('')
   const [gifs, setGifs] = useState([])
   const [loading, setLoading] = useState(false)
@@ -234,7 +235,7 @@ function GifPicker({ visible, onClose, onSelect }) {
   const noKey = !GIPHY_KEY
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col animate-fade-in" style={{ background: 'rgba(11,11,11,0.97)' }}>
+    <div className="fixed inset-x-0 z-50 flex flex-col animate-fade-in" style={{ bottom: `${keyboardHeight}px`, top: 0, background: 'rgba(11,11,11,0.97)' }}>
       <div className="flex items-center gap-3 p-4 border-b border-ash-700">
         <button onClick={onClose} className="text-ash-400 hover:text-ash-100 transition-colors">
           <CloseIcon size={20} />
@@ -338,7 +339,7 @@ function ChatHeader({ code, timeLeft, userCount, onLeave, isOwner, locked, onLoc
 }
 
 // ── Input Bar with reply preview ──────────────────────────────────────────────
-function InputBar({ onSend, disabled, replyTo, clearReply, keyboardSpace }) {
+function InputBar({ onSend, disabled, replyTo, clearReply, keyboardHeight }) {
   const [text, setText] = useState('')
   const [showEmoji, setShowEmoji] = useState(false)
   const [showGif, setShowGif] = useState(false)
@@ -353,17 +354,17 @@ function InputBar({ onSend, disabled, replyTo, clearReply, keyboardSpace }) {
 
   return (
     <>
-      {showEmoji && <div className="fixed left-0 right-0 z-30 animate-slide-up" style={{ bottom: `${60 + keyboardSpace}px`, maxWidth: '420px', margin: '0 auto', padding: '0 12px 8px' }}>
+      {showEmoji && <div className="fixed left-0 right-0 z-30 animate-slide-up keyboard-bottom-transition" style={{ bottom: `${keyboardHeight + 70}px`, maxWidth: '420px', margin: '0 auto', padding: '0 12px 8px' }}>
         <Picker data={data} onEmojiSelect={handleEmojiSelect} theme="dark" previewPosition="none" skinTonePosition="none" />
       </div>}
-      <GifPicker visible={showGif} onClose={() => setShowGif(false)} onSelect={handleGifSelect} />
+      <GifPicker visible={showGif} keyboardHeight={keyboardHeight} onClose={() => setShowGif(false)} onSelect={handleGifSelect} />
       {replyTo && (
-        <div className="fixed left-0 right-0 z-20 flex items-center justify-between px-3 py-2" style={{ bottom: `${60 + keyboardSpace}px`, background: '#2A2A2A', borderTop: '1px solid #FF4500' }}>
+        <div className="fixed left-0 right-0 z-20 flex items-center justify-between px-3 py-2 keyboard-bottom-transition" style={{ bottom: `${keyboardHeight + 70}px`, background: '#2A2A2A', borderTop: '1px solid #FF4500' }}>
           <div className="flex-1 text-xs text-ash-300"><span className="text-fire-500">↪️ Replying to {replyTo.sender}:</span> {replyTo.message}</div>
           <button onClick={clearReply} className="text-ash-500 hover:text-fire-500"><CloseIcon size={14} /></button>
         </div>
       )}
-      <div className="fixed left-0 right-0 z-20 flex items-center gap-2 px-3 safe-bottom" style={{ bottom: `${keyboardSpace}px`, minHeight: '60px', background: 'rgba(26,26,26,0.97)', backdropFilter: 'blur(12px)', borderTop: '1px solid #2A2A2A' }}>
+      <div className="fixed left-0 right-0 z-20 flex items-center gap-2 px-3 safe-bottom keyboard-bottom-transition" style={{ bottom: `${keyboardHeight}px`, minHeight: '60px', background: 'rgba(26,26,26,0.97)', backdropFilter: 'blur(12px)', borderTop: '1px solid #2A2A2A' }}>
         <button onClick={() => { setShowEmoji(v => !v); setShowGif(false) }} className="text-ash-400 hover:text-fire-500 transition-colors rounded-lg p-1.5 hover:bg-white/5" style={{ minWidth: '40px', minHeight: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><SmileIcon size={22} /></button>
         <button onClick={() => { setShowGif(v => !v); setShowEmoji(false) }} className="text-ash-400 hover:text-fire-500 border border-ash-600 hover:border-fire-500 transition-all rounded-full px-3 font-bold" style={{ fontSize: '0.75rem', height: '32px', letterSpacing: '0.05em' }}>GIF</button>
         <input ref={inputRef} type="text" value={text} onChange={(e) => setText(e.target.value)} onKeyDown={handleKeyDown} onFocus={handleFocus} placeholder="Type a message…" disabled={disabled} className="flex-1 text-white placeholder-ash-500 bg-ash-700 border-none outline-none px-4 disabled:opacity-50" style={{ height: '44px', borderRadius: '22px', fontSize: '0.95rem' }} autoComplete="off" />
@@ -425,7 +426,7 @@ export default function Room() {
   const [show1MinDismissed, setShow1MinDismissed] = useState(false)
   const [expired, setExpired] = useState(false)
   const [intensified, setIntensified] = useState(false)
-  const [keyboardSpace, setKeyboardSpace] = useState(0)
+  const { keyboardHeight, isKeyboardVisible } = useKeyboardHeight()
 
   const messagesEndRef = useRef(null)
   const timerRef = useRef(null)
@@ -436,36 +437,9 @@ export default function Room() {
   useEffect(() => {
     const timer = setTimeout(() => {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' })
-    }, 50)
+    }, 90)
     return () => clearTimeout(timer)
-  }, [messages])
-
-  useEffect(() => {
-    const updateKeyboardSpace = () => {
-      const vv = window.visualViewport
-      if (!vv) {
-        setKeyboardSpace(0)
-        return
-      }
-      const bottomGap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop)
-      setKeyboardSpace(bottomGap)
-    }
-
-    updateKeyboardSpace()
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', updateKeyboardSpace)
-      window.visualViewport.addEventListener('scroll', updateKeyboardSpace)
-    }
-    window.addEventListener('resize', updateKeyboardSpace)
-
-    return () => {
-      if (window.visualViewport) {
-        window.visualViewport.removeEventListener('resize', updateKeyboardSpace)
-        window.visualViewport.removeEventListener('scroll', updateKeyboardSpace)
-      }
-      window.removeEventListener('resize', updateKeyboardSpace)
-    }
-  }, [])
+  }, [messages, keyboardHeight])
 
   useEffect(() => {
     if (!joined || expired) return
@@ -585,7 +559,7 @@ export default function Room() {
       <WarningBanner visible={show5MinBanner} onDismiss={() => setShow5MinBanner(false)} />
       <OneMinuteModal visible={show1MinModal && !show1MinDismissed} onCreateNew={handleCreateNew} onStay={() => { setShow1MinModal(false); setShow1MinDismissed(true) }} />
       <ExpiredOverlay visible={expired} onCreateNew={handleCreateNew} />
-      <main className="flex-1 overflow-y-auto px-4 pt-4" style={{ marginTop: '56px', marginBottom: 60 + keyboardSpace, paddingTop: show5MinBanner ? '60px' : '16px', transition: 'padding-top 0.3s ease' }}>
+      <main className="flex-1 overflow-y-auto px-4 pt-4" style={{ marginTop: '56px', paddingTop: show5MinBanner ? '60px' : '16px', paddingBottom: `${90 + keyboardHeight}px`, transition: 'padding-top 0.3s ease, padding-bottom 0.15s ease' }}>
         {messages.length === 0 && joined && (
           <div className="flex flex-col items-center justify-center h-full py-20 text-ash-600 text-sm animate-fade-in">
             <FlameIcon size={32} className="text-fire-700 mb-3" />
@@ -596,7 +570,7 @@ export default function Room() {
         {messages.map(msg => <MessageBubble key={msg.id} msg={msg} isSelf={msg.isSelf} onReply={() => setReplyTo({ message: msg.message, sender: msg.isSelf ? 'You' : 'User', timestamp: msg.timestamp })} />)}
         <div ref={messagesEndRef} />
       </main>
-      <InputBar onSend={handleSend} disabled={expired || !joined} replyTo={replyTo} clearReply={() => setReplyTo(null)} keyboardSpace={keyboardSpace} />
+      <InputBar onSend={handleSend} disabled={expired || !joined} replyTo={replyTo} clearReply={() => setReplyTo(null)} keyboardHeight={keyboardHeight} />
       <UserManageModal visible={showUserModal} onClose={() => setShowUserModal(false)} usersList={usersList} mySocketId={mySocketIdRef.current} onKick={handleKickUser} />
     </div>
   )

@@ -182,6 +182,10 @@
   .safe-bottom {
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
+
+  .keyboard-bottom-transition {
+    transition: bottom 180ms ease, padding-bottom 180ms ease, height 180ms ease;
+  }
 }
 
 /* ── Custom animations ─────────────────────────────────────────────────────── */
